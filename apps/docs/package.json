@@ -1,0 +1,16 @@
+{
+  "name": "docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs",
+    "preview": "vitepress preview docs",
+    "api": "typedoc --tsconfig ../../packages/core/tsconfig.json --plugin typedoc-plugin-markdown --out docs/reference ../../packages/core/src/index.ts"
+  },
+  "devDependencies": {
+    "typedoc": "^0.28.15",
+    "typedoc-plugin-markdown": "^4.9.0",
+    "vitepress": "^1.6.4"
+  }
+}

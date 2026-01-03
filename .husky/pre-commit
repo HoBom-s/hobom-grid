@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+if git diff --cached --name-only | grep '^packages/core/'; then
+  echo "core changed → generating API docs"
+  pnpm docs:api
+else
+  echo "core not changed → skip API docs"
+fi
