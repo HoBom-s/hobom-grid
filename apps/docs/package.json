@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev docs",
-    "build": "vitepress build docs",
-    "preview": "vitepress preview docs",
-    "api": "typedoc --tsconfig ../../packages/core/tsconfig.json --plugin typedoc-plugin-markdown --out docs/reference ../../packages/core/src/index.ts"
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview .",
+    "api": "typedoc --tsconfig ../../packages/core/tsconfig.json --plugin typedoc-plugin-markdown --out reference ../../packages/core/src/index.ts && node scripts/typedoc-postprocess.mjs"
   },
   "devDependencies": {
     "typedoc": "^0.28.15",

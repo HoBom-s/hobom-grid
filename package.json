@@ -23,12 +23,16 @@
     "lint": "turbo lint",
     "lint:fix": "turbo lint -- --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "knip:core": "knip --workspace packages/core --exports",
+    "knip:react": "knip --workspace packages/react --exports",
+    "knip:packages": "pnpm -w knip:core && pnpm -w knip:react"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.39.2",
     "husky": "^9.1.7",
+    "knip": "^5.79.0",
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "tsup": "^8.5.1",
