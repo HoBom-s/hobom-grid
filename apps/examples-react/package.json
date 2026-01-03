@@ -1,0 +1,22 @@
+{
+  "name": "examples-react",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hobom-grid/core": "workspace:*",
+    "@hobom-grid/react": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "vite": "^7.3.0"
+  }
+}

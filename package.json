@@ -1,0 +1,32 @@
+{
+  "name": "hobom-grid",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:examples": "pnpm --filter examples-react dev",
+    "typecheck:examples": "pnpm --filter examples-react typecheck",
+
+    "build": "turbo build",
+    "build:examples": "pnpm --filter examples-react build",
+    "build:core": "pnpm -w --filter @hobom-grid/core build",
+    "build:react": "pnpm -w --filter @hobom-grid/react build",
+
+    "test": "turbo test",
+
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint -- --fix",
+
+    "typecheck": "turbo typecheck",
+
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "tsup": "^8.5.1",
+    "turbo": "^2.7.2",
+    "typescript": "^5.9.3"
+  }
+}
