@@ -5,7 +5,7 @@
   "scripts": {
     "prepare": "husky install",
     "ci:lint": "turbo lint",
-    "ci:knip": "turbo knip",
+    "ci:knip": "pnpm -w knip:packages",
     "ci:test": "turbo test",
     "ci:build": "turbo build",
     "dev": "turbo dev",

@@ -64,11 +64,9 @@ module.exports = [
       react: { version: "detect" },
     },
     rules: {
-      // 기존 eslintrc의 "plugin:react/recommended" + "plugin:react-hooks/recommended" 대응
       ...(react.configs.recommended?.rules ?? {}),
       ...(reactHooks.configs.recommended?.rules ?? {}),
 
-      // 기존 룰 유지
       "react/react-in-jsx-scope": "off", // React 17+
     },
   },
