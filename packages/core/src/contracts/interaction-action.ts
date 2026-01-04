@@ -64,4 +64,22 @@ export type InteractionAction =
     }
   | {
       type: "ClearSelection";
+    }
+  | {
+      type: "PointerDragStart";
+      point: GridPoint;
+      hit: HitTarget;
+      mods: ModifierKeys;
+    }
+  | {
+      type: "PointerDragMove";
+      point: GridPoint;
+      hit: HitTarget;
+      mods: ModifierKeys;
+    }
+  | {
+      type: "PointerDragEnd";
+      point: GridPoint;
+      hit: HitTarget;
+      mods: ModifierKeys;
     };

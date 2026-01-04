@@ -154,4 +154,86 @@ describe("InteractionKernel reducer", () => {
     expect(s1.selection.ranges).toHaveLength(0);
     expect(s1.selection.active).toEqual({ row: 3, col: 4 }); // active stays (design choice)
   });
+
+  it("drag selection expands range while moving", () => {
+    const reducer = createInteractionKernelReducer({
+      rowCount: 10,
+      colCount: 10,
+      enableSelectAll: true,
+    });
+
+    const s0 = createInitialInteractionKernelState();
+
+    const s1 = reducer(s0, {
+      type: "PointerDragStart",
+      point: { x: 0, y: 0 },
+      hit: { region: "cell", cell: { row: 1, col: 1 } },
+      mods: mods(),
+    });
+
+    expect(s1.drag?.kind).toBe("selection");
+    expect(s1.selection.ranges[0]).toEqual({ start: { row: 1, col: 1 }, end: { row: 1, col: 1 } });
+
+    const s2 = reducer(s1, {
+      type: "PointerDragMove",
+      point: { x: 0, y: 0 },
+      hit: { region: "cell", cell: { row: 3, col: 4 } },
+      mods: mods(),
+    });
+
+    expect(s2.selection.ranges[0]).toEqual({
+      start: { row: 1, col: 1 },
+      end: { row: 3, col: 4 },
+    });
+    expect(s2.drag?.lastCell).toEqual({ row: 3, col: 4 });
+
+    const s3 = reducer(s2, {
+      type: "PointerDragEnd",
+      point: { x: 0, y: 0 },
+      hit: { region: "grid" },
+      mods: mods(),
+    });
+
+    expect(s3.drag).toBeNull();
+    expect(s3.selection.ranges[0]).toEqual({
+      start: { row: 1, col: 1 },
+      end: { row: 3, col: 4 },
+    });
+  });
+
+  it("shift-drag uses existing anchor", () => {
+    const reducer = createInteractionKernelReducer({
+      rowCount: 10,
+      colCount: 10,
+      enableSelectAll: true,
+    });
+
+    // 먼저 anchor를 (2,2)로 만들어둠
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "PointerDown",
+      point: { x: 0, y: 0 },
+      button: 0,
+      hit: { region: "cell", cell: { row: 2, col: 2 } },
+      mods: mods(),
+    });
+
+    const s1 = reducer(s0, {
+      type: "PointerDragStart",
+      point: { x: 0, y: 0 },
+      hit: { region: "cell", cell: { row: 4, col: 4 } },
+      mods: mods({ shift: true }),
+    });
+
+    const s2 = reducer(s1, {
+      type: "PointerDragMove",
+      point: { x: 0, y: 0 },
+      hit: { region: "cell", cell: { row: 6, col: 1 } },
+      mods: mods({ shift: true }),
+    });
+
+    expect(s2.selection.ranges[0]).toEqual({
+      start: { row: 2, col: 1 },
+      end: { row: 6, col: 2 },
+    });
+  });
 });
