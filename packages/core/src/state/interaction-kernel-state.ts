@@ -16,6 +16,13 @@ export type SelectionModel = Readonly<{
   ranges: readonly CellRange[];
 }>;
 
+type DragSession = Readonly<{
+  kind: "selection";
+  startCell: GridCellRef;
+  lastCell: GridCellRef;
+  anchorAtStart: GridCellRef;
+}>;
+
 export type InteractionKernelState = Readonly<{
   isFocused: boolean;
 
@@ -26,6 +33,8 @@ export type InteractionKernelState = Readonly<{
   focusCell: GridCellRef | null;
 
   selection: SelectionModel;
+
+  drag: DragSession | null;
 }>;
 
 export const createInitialInteractionKernelState = (): InteractionKernelState => ({
@@ -37,6 +46,7 @@ export const createInitialInteractionKernelState = (): InteractionKernelState =>
     anchor: null,
     ranges: [],
   },
+  drag: null,
 });
 
 export const normalizeRange = (r: CellRange): CellRange => {

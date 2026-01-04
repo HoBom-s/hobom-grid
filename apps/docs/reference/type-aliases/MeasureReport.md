@@ -8,4 +8,4 @@
 
 > **MeasureReport** = `Readonly`\<\{ `axis`: [`AxisKind`](AxisKind.md); `index`: `number`; `sizePx`: [`Px`](Px.md); \}\>
 
-Defined in: [axis/measured-axis.ts:25](https://github.com/HoBom-s/hobom-grid/blob/3a81d4b967ca72af9ed09e7c634c357f2d0b00fa/packages/core/src/axis/measured-axis.ts#L25)
+Defined in: [axis/measured-axis.ts:25](https://github.com/HoBom-s/hobom-grid/blob/1eb5d1e8fe3f5ebb51be2e05203a4b716da4dec8/packages/core/src/axis/measured-axis.ts#L25)

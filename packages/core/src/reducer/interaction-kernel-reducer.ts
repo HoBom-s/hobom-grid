@@ -108,9 +108,82 @@ const moveCell = (
 type InteractionKernelConfig = Readonly<{
   rowCount: number;
   colCount: number;
+
   /** If true, Ctrl/Cmd+A selects all */
   enableSelectAll: boolean;
 }>;
+
+const startSelectionDrag = (
+  state: InteractionKernelState,
+  start: GridCellRef,
+): InteractionKernelState => {
+  const anchorAtStart = state.selection.anchor ?? state.selection.active ?? start;
+
+  const next = setSingleSelection(state, start);
+  return {
+    ...next,
+    drag: {
+      kind: "selection",
+      startCell: start,
+      lastCell: start,
+      anchorAtStart,
+    },
+  };
+};
+
+const updateSelectionDrag = (
+  state: InteractionKernelState,
+  cell: GridCellRef,
+  mods: { shift: boolean },
+): InteractionKernelState => {
+  const drag = state.drag;
+  if (!drag || drag.kind !== "selection") return state;
+
+  const anchor = mods.shift ? (state.selection.anchor ?? drag.anchorAtStart) : drag.anchorAtStart;
+
+  const range: CellRange = normalizeRange({ start: anchor, end: cell });
+
+  return {
+    ...state,
+    focusCell: cell,
+    selection: {
+      active: cell,
+      anchor,
+      ranges: [range],
+    },
+    drag: { ...drag, lastCell: cell },
+  };
+};
+
+const endSelectionDrag = (state: InteractionKernelState): InteractionKernelState => {
+  if (state.drag == null) return state;
+  return { ...state, drag: null };
+};
+
+const startSelectionDragWithAnchor = (
+  state: InteractionKernelState,
+  start: GridCellRef,
+  anchor: GridCellRef,
+): InteractionKernelState => {
+  const range: CellRange = normalizeRange({ start: anchor, end: start });
+
+  return {
+    ...state,
+    isFocused: true,
+    focusCell: start,
+    selection: {
+      active: start,
+      anchor,
+      ranges: [range],
+    },
+    drag: {
+      kind: "selection",
+      startCell: start,
+      lastCell: start,
+      anchorAtStart: anchor,
+    },
+  };
+};
 
 export const createInteractionKernelReducer = (
   config: InteractionKernelConfig,
@@ -238,6 +311,34 @@ export const createInteractionKernelReducer = (
       case "ClearSelection": {
         if (state.selection.ranges.length === 0) return state;
         return { ...state, selection: { ...state.selection, ranges: [] } };
+      }
+
+      case "PointerDragStart": {
+        const cell = toCellFromHit(action.hit);
+        if (!cell) return state;
+
+        const base: InteractionKernelState = state.isFocused
+          ? state
+          : { ...state, isFocused: true };
+
+        if (action.mods.shift) {
+          const anchor = base.selection.anchor ?? base.selection.active ?? cell;
+          return startSelectionDragWithAnchor(base, cell, anchor);
+        }
+
+        // plain drag: start cell becomes anchor
+        return startSelectionDrag(base, cell);
+      }
+
+      case "PointerDragMove": {
+        const cell = toCellFromHit(action.hit);
+        if (!cell) return state;
+
+        return updateSelectionDrag(state, cell, { shift: action.mods.shift });
+      }
+
+      case "PointerDragEnd": {
+        return endSelectionDrag(state);
       }
 
       default: {

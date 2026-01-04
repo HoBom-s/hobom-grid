@@ -6,6 +6,6 @@
 
 # Type Alias: InteractionKernelState
 
-> **InteractionKernelState** = `Readonly`\<\{ `focusCell`: [`GridCellRef`](GridCellRef.md) \| `null`; `hover`: [`HitTarget`](HitTarget.md) \| `null`; `isFocused`: `boolean`; `selection`: `SelectionModel`; \}\>
+> **InteractionKernelState** = `Readonly`\<\{ `drag`: `DragSession` \| `null`; `focusCell`: [`GridCellRef`](GridCellRef.md) \| `null`; `hover`: [`HitTarget`](HitTarget.md) \| `null`; `isFocused`: `boolean`; `selection`: `SelectionModel`; \}\>
 
-Defined in: [state/interaction-kernel-state.ts:19](https://github.com/HoBom-s/hobom-grid/blob/3a81d4b967ca72af9ed09e7c634c357f2d0b00fa/packages/core/src/state/interaction-kernel-state.ts#L19)
+Defined in: [state/interaction-kernel-state.ts:26](https://github.com/HoBom-s/hobom-grid/blob/1eb5d1e8fe3f5ebb51be2e05203a4b716da4dec8/packages/core/src/state/interaction-kernel-state.ts#L26)
