@@ -4,6 +4,10 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "prepare": "husky install",
+    "ci:lint": "turbo lint",
+    "ci:knip": "turbo knip",
+    "ci:test": "turbo test",
+    "ci:build": "turbo build",
     "dev": "turbo dev",
     "dev:examples": "pnpm --filter examples-react dev",
     "typecheck": "turbo typecheck",

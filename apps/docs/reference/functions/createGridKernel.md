@@ -8,7 +8,7 @@
 
 > **createGridKernel**(`spec`): `GridKernel`
 
-Defined in: [grid/create-grid.ts:109](https://github.com/HoBom-s/hobom-grid/blob/53c72674a9d36d64339f8bb1ffa7235127726f1f/packages/core/src/grid/create-grid.ts#L109)
+Defined in: [grid/create-grid.ts:109](https://github.com/HoBom-s/hobom-grid/blob/248262d932c8ddc15e37b97325fd38832e306bb8/packages/core/src/grid/create-grid.ts#L109)
 
 ## Parameters
 
