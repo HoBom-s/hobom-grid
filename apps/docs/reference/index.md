@@ -26,6 +26,7 @@
 ## Variables
 
 - [defaultHitTest](variables/defaultHitTest.md)
+- [InteractionKernel](variables/InteractionKernel.md)
 
 ## Functions
 

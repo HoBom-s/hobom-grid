@@ -4,3 +4,4 @@
 
 ## Pages
 - [`defaultHitTest`](./defaultHitTest)
+- [`InteractionKernel`](./InteractionKernel)
