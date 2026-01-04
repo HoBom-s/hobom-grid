@@ -241,9 +241,6 @@ export const createInteractionKernelReducer = (
       }
 
       default: {
-        // exhaustive check
-        // @ts-ignore
-        const _x: never = action;
         return state;
       }
     }
