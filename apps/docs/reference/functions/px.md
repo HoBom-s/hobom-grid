@@ -8,7 +8,7 @@
 
 > **px**(`n`): [`Px`](../type-aliases/Px.md)
 
-Defined in: [contracts/contracts-model.ts:91](https://github.com/HoBom-s/hobom-grid/blob/53c72674a9d36d64339f8bb1ffa7235127726f1f/packages/core/src/contracts/contracts-model.ts#L91)
+Defined in: [contracts/contracts-model.ts:91](https://github.com/HoBom-s/hobom-grid/blob/3a81d4b967ca72af9ed09e7c634c357f2d0b00fa/packages/core/src/contracts/contracts-model.ts#L91)
 
 Brand constructor for pixels.
 NOTE: This is intentionally a simple cast; validation happens at boundaries.

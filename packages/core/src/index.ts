@@ -29,3 +29,16 @@ export { createGridKernel } from "./grid/create-grid";
 // -----------------------------
 export type { ViewportModel } from "./viewport/viewport-model";
 export type { ViewModel, CellVM } from "./viewmodel/view-model";
+
+// -----------------------------
+// Interaction Kernel (Phase 2)
+// -----------------------------
+export type { GridLayout, HitTarget, GridCellRef } from "./contracts/hit-test-model";
+export type { InteractionAction } from "./contracts/interaction-action";
+export type { InteractionKernelState } from "./state/interaction-kernel-state";
+
+export { defaultHitTest } from "./contracts/hit-test-model";
+export {
+  InteractionKernel,
+  createInteractionKernelReducer,
+} from "./reducer/interaction-kernel-reducer";

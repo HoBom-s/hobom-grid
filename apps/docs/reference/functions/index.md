@@ -4,5 +4,6 @@
 
 ## Pages
 - [`createGridKernel`](./createGridKernel)
+- [`createInteractionKernelReducer`](./createInteractionKernelReducer)
 - [`createMeasuredAxis`](./createMeasuredAxis)
 - [`px`](./px)

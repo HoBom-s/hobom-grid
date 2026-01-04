@@ -14,12 +14,14 @@ UI frameworks consume the view model and handle rendering separately.
 ## Packages
 
 ### @hobom-grid/core
+
 - Grid state management
 - Virtualized row calculations
 - Column layout computation
 - View model generation
 
 ### @hobom-grid/react
+
 - React renderer and hooks
 - Example implementation of the core engine
 

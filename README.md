@@ -21,43 +21,53 @@ Framework-agnostic, headless-first data grid engine with thin UI adapters.
 ## Command
 
 ### Install
+
 ```bash
 pnpm install
 ```
 
 ### Build
+
 ```bash
 pnpm build
 ```
 
 ### Dev
+
 Run only the example:
+
 ```bash
 pnpm dev:examples
 ```
 
 ### Testing
+
 ```bash
 pnpm test
 ```
 
 ### Coverage
+
 Coverage output: Console summary
 
 coverage/ directory (HTML report)
+
 ```bash
 pnpm coverage
 ```
 
 ### Documentation
+
 Documentation (Automated)
 
 ### Build docs
+
 ```bash
 pnpm docs:build
 ```
 
 ### Generate API reference (from TypeScript types)
+
 ```bash
 pnpm docs:api
 ```
