@@ -236,4 +236,101 @@ describe("InteractionKernel reducer", () => {
       end: { row: 6, col: 2 },
     });
   });
+
+  it("row-header click selects entire row", () => {
+    const reducer = createInteractionKernelReducer({
+      rowCount: 5,
+      colCount: 4,
+      enableSelectAll: true,
+    });
+    const s0 = createInitialInteractionKernelState();
+
+    const s1 = reducer(s0, {
+      type: "PointerDown",
+      point: { x: 0, y: 0 },
+      button: 0,
+      hit: { region: "row-header", cell: { row: 2, col: -1 } },
+      mods: mods(),
+    });
+
+    expect(s1.selection.ranges[0]).toEqual({
+      start: { row: 2, col: 0 },
+      end: { row: 2, col: 3 },
+    });
+  });
+
+  it("col-header click selects entire col", () => {
+    const reducer = createInteractionKernelReducer({
+      rowCount: 5,
+      colCount: 4,
+      enableSelectAll: true,
+    });
+    const s0 = createInitialInteractionKernelState();
+
+    const s1 = reducer(s0, {
+      type: "PointerDown",
+      point: { x: 0, y: 0 },
+      button: 0,
+      hit: { region: "col-header", cell: { row: -1, col: 1 } },
+      mods: mods(),
+    });
+
+    expect(s1.selection.ranges[0]).toEqual({
+      start: { row: 0, col: 1 },
+      end: { row: 4, col: 1 },
+    });
+  });
+
+  it("corner click selects all", () => {
+    const reducer = createInteractionKernelReducer({
+      rowCount: 3,
+      colCount: 2,
+      enableSelectAll: true,
+    });
+    const s0 = createInitialInteractionKernelState();
+
+    const s1 = reducer(s0, {
+      type: "PointerDown",
+      point: { x: 0, y: 0 },
+      button: 0,
+      hit: { region: "corner" },
+      mods: mods(),
+    });
+
+    expect(s1.selection.ranges[0]).toEqual({
+      start: { row: 0, col: 0 },
+      end: { row: 2, col: 1 },
+    });
+  });
+
+  it("shift + row-header expands from existing anchor", () => {
+    const reducer = createInteractionKernelReducer({
+      rowCount: 6,
+      colCount: 5,
+      enableSelectAll: true,
+    });
+
+    // anchor = (1,1)
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "PointerDown",
+      point: { x: 0, y: 0 },
+      button: 0,
+      hit: { region: "cell", cell: { row: 1, col: 1 } },
+      mods: mods(),
+    });
+
+    const s1 = reducer(s0, {
+      type: "PointerDown",
+      point: { x: 0, y: 0 },
+      button: 0,
+      hit: { region: "row-header", cell: { row: 4, col: -1 } },
+      mods: mods({ shift: true }),
+    });
+
+    // anchor(1,1) -> end(4, lastCol=4)
+    expect(s1.selection.ranges[0]).toEqual({
+      start: { row: 1, col: 1 },
+      end: { row: 4, col: 4 },
+    });
+  });
 });

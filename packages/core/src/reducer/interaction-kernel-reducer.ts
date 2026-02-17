@@ -185,6 +185,114 @@ const startSelectionDragWithAnchor = (
   };
 };
 
+const selectAll = (
+  state: InteractionKernelState,
+  bounds: { rowCount: number; colCount: number },
+): InteractionKernelState => {
+  if (bounds.rowCount <= 0 || bounds.colCount <= 0) return state;
+
+  const start = { row: 0, col: 0 };
+  const end = { row: bounds.rowCount - 1, col: bounds.colCount - 1 };
+  const range: CellRange = normalizeRange({ start, end });
+
+  return {
+    ...state,
+    isFocused: true,
+    focusCell: state.focusCell ?? state.selection.active ?? start,
+    selection: {
+      active: state.focusCell ?? start,
+      anchor: start,
+      ranges: [range],
+    },
+  };
+};
+
+const selectRow = (
+  state: InteractionKernelState,
+  row: number,
+  bounds: { rowCount: number; colCount: number },
+): InteractionKernelState => {
+  if (row < 0 || row >= bounds.rowCount || bounds.colCount <= 0) return state;
+
+  const start = { row, col: 0 };
+  const end = { row, col: bounds.colCount - 1 };
+  const range: CellRange = normalizeRange({ start, end });
+
+  return {
+    ...state,
+    isFocused: true,
+    focusCell: { row, col: 0 },
+    selection: {
+      active: { row, col: 0 },
+      anchor: { row, col: 0 },
+      ranges: [range],
+    },
+  };
+};
+
+const selectCol = (
+  state: InteractionKernelState,
+  col: number,
+  bounds: { rowCount: number; colCount: number },
+): InteractionKernelState => {
+  if (col < 0 || col >= bounds.colCount || bounds.rowCount <= 0) return state;
+
+  const start = { row: 0, col };
+  const end = { row: bounds.rowCount - 1, col };
+  const range: CellRange = normalizeRange({ start, end });
+
+  return {
+    ...state,
+    isFocused: true,
+    focusCell: { row: 0, col },
+    selection: {
+      active: { row: 0, col },
+      anchor: { row: 0, col },
+      ranges: [range],
+    },
+  };
+};
+
+const expandSelectionToRow = (
+  state: InteractionKernelState,
+  row: number,
+  bounds: { rowCount: number; colCount: number },
+): InteractionKernelState => {
+  if (bounds.colCount <= 0) return state;
+  const anchor = state.selection.anchor ?? state.selection.active;
+  if (!anchor) return selectRow(state, row, bounds);
+
+  const end = { row, col: bounds.colCount - 1 };
+  const range: CellRange = normalizeRange({ start: anchor, end });
+
+  return {
+    ...state,
+    isFocused: true,
+    focusCell: { row, col: 0 },
+    selection: { active: { row, col: 0 }, anchor, ranges: [range] },
+  };
+};
+
+const expandSelectionToCol = (
+  state: InteractionKernelState,
+  col: number,
+  bounds: { rowCount: number; colCount: number },
+): InteractionKernelState => {
+  if (bounds.rowCount <= 0) return state;
+  const anchor = state.selection.anchor ?? state.selection.active;
+  if (!anchor) return selectCol(state, col, bounds);
+
+  const end = { row: bounds.rowCount - 1, col };
+  const range: CellRange = normalizeRange({ start: anchor, end });
+
+  return {
+    ...state,
+    isFocused: true,
+    focusCell: { row: 0, col },
+    selection: { active: { row: 0, col }, anchor, ranges: [range] },
+  };
+};
+
 export const createInteractionKernelReducer = (
   config: InteractionKernelConfig,
 ): InteractionKernelReducer => {
@@ -201,20 +309,43 @@ export const createInteractionKernelReducer = (
       }
 
       case "PointerDown": {
-        if (action.button !== 0) return state; // left only for now
-        const cell = toCellFromHit(action.hit);
-        if (!cell) return state;
+        if (action.button !== 0) return state;
 
-        // When pointer down, grid is effectively focused (UI layer may also dispatch FocusGained)
         const base: InteractionKernelState = state.isFocused
           ? state
           : { ...state, isFocused: true };
 
+        if (action.hit.region === "corner") {
+          return selectAll(base, { rowCount: config.rowCount, colCount: config.colCount });
+        }
+
+        if (action.hit.region === "row-header" && action.hit.cell?.row != null) {
+          const row = action.hit.cell.row;
+          if (action.mods.shift) {
+            return expandSelectionToRow(base, row, {
+              rowCount: config.rowCount,
+              colCount: config.colCount,
+            });
+          }
+          return selectRow(base, row, { rowCount: config.rowCount, colCount: config.colCount });
+        }
+
+        if (action.hit.region === "col-header" && action.hit.cell?.col != null) {
+          const col = action.hit.cell.col;
+          if (action.mods.shift) {
+            return expandSelectionToCol(base, col, {
+              rowCount: config.rowCount,
+              colCount: config.colCount,
+            });
+          }
+          return selectCol(base, col, { rowCount: config.rowCount, colCount: config.colCount });
+        }
+
+        const cell = toCellFromHit(action.hit);
+        if (!cell) return state;
+
         if (action.mods.shift) return setRangeSelectionFromAnchor(base, cell);
-
-        // Ctrl/Cmd for multi-select toggle
         if (action.mods.ctrl || action.mods.meta) return toggleCellSelection(base, cell);
-
         return setSingleSelection(base, cell);
       }
 
