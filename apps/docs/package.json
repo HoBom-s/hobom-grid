@@ -6,7 +6,7 @@
     "dev": "vitepress dev .",
     "build": "vitepress build .",
     "preview": "vitepress preview .",
-    "api": "typedoc --tsconfig ../../packages/core/tsconfig.json --plugin typedoc-plugin-markdown --out reference ../../packages/core/src/index.ts && node scripts/typedoc-postprocess.mjs"
+    "api": "typedoc --tsconfig ../../packages/core/tsconfig.json --plugin typedoc-plugin-markdown --gitRevision main --out reference ../../packages/core/src/index.ts && node scripts/typedoc-postprocess.mjs"
   },
   "devDependencies": {
     "typedoc": "^0.28.15",
