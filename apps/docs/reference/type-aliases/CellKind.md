@@ -8,7 +8,7 @@
 
 > **CellKind** = `"body"` \| `"header"` \| `"pinnedStart"` \| `"pinnedEnd"` \| `"cornerStart"` \| `"cornerEnd"`
 
-Defined in: [contracts/contracts-model.ts:34](https://github.com/HoBom-s/hobom-grid/blob/1eb5d1e8fe3f5ebb51be2e05203a4b716da4dec8/packages/core/src/contracts/contracts-model.ts#L34)
+Defined in: [contracts/contracts-model.ts:34](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/contracts/contracts-model.ts#L34)
 
 Renderable cell “layer” classification.
 - body: scrollable content

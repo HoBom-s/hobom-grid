@@ -8,4 +8,4 @@
 
 > **InteractionKernelState** = `Readonly`\<\{ `drag`: `DragSession` \| `null`; `focusCell`: [`GridCellRef`](GridCellRef.md) \| `null`; `hover`: [`HitTarget`](HitTarget.md) \| `null`; `isFocused`: `boolean`; `selection`: `SelectionModel`; \}\>
 
-Defined in: [state/interaction-kernel-state.ts:26](https://github.com/HoBom-s/hobom-grid/blob/1eb5d1e8fe3f5ebb51be2e05203a4b716da4dec8/packages/core/src/state/interaction-kernel-state.ts#L26)
+Defined in: [state/interaction-kernel-state.ts:26](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/state/interaction-kernel-state.ts#L26)
