@@ -60,10 +60,13 @@ export const Grid = ({
   // Stable refs so interaction handlers always see the latest values
   // without being recreated on every scroll
   const viewportRef = useRef(viewport);
+  // eslint-disable-next-line react-hooks/refs
   viewportRef.current = viewport;
   const rowAxisRef = useRef(rowAxis);
+  // eslint-disable-next-line react-hooks/refs
   rowAxisRef.current = rowAxis;
   const colAxisRef = useRef(colAxis);
+  // eslint-disable-next-line react-hooks/refs
   colAxisRef.current = colAxis;
 
   const {

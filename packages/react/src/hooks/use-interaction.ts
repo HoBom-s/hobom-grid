@@ -56,7 +56,7 @@ export const useInteraction = (
         colCount: spec.colCount,
         enableSelectAll: spec.enableSelectAll ?? true,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [spec.rowCount, spec.colCount, spec.enableSelectAll],
   );
 

@@ -23,7 +23,7 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
         count: spec.rowCount,
         estimateSizePx: spec.defaultRowHeight,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [spec.rowCount, spec.defaultRowHeight],
   );
 
@@ -34,7 +34,7 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
         count: spec.colCount,
         estimateSizePx: spec.defaultColWidth,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [spec.colCount, spec.defaultColWidth],
   );
 
@@ -47,7 +47,7 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
         pinnedColStartCount: spec.pinnedColStartCount,
         pinnedColEndCount: spec.pinnedColEndCount,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [rowAxis, colAxis, spec.headerRowCount, spec.pinnedColStartCount, spec.pinnedColEndCount],
   );
 
