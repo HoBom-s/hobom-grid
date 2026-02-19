@@ -8,3 +8,7 @@ export type { UseGridKernelResult } from "./hooks/use-grid-kernel";
 
 export { useInteraction } from "./hooks/use-interaction";
 export type { UseInteractionResult } from "./hooks/use-interaction";
+
+// Data pipeline
+export { useClientRowModel } from "./hooks/use-client-row-model";
+export type { UseClientRowModelOpts } from "./hooks/use-client-row-model";

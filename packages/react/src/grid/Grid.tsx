@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import type { CellVM, InteractionKernelState, ViewportModel } from "@hobom-grid/core";
 import { useGridKernel } from "../hooks/use-grid-kernel";
 import { useInteraction } from "../hooks/use-interaction";
@@ -16,6 +16,9 @@ export type GridProps = Readonly<{
   // Default sizes (used as estimate until DOM measurement)
   defaultRowHeight?: number;
   defaultColWidth?: number;
+
+  // Pre-set column sizes (px) keyed by column index
+  colSizes?: Readonly<Record<number, number>>;
 
   // Grid structure
   headerRowCount?: number;
@@ -38,6 +41,7 @@ export const Grid = ({
   colCount,
   defaultRowHeight = 32,
   defaultColWidth = 120,
+  colSizes,
   headerRowCount = 1,
   pinnedColStartCount = 0,
   pinnedColEndCount = 0,
@@ -46,16 +50,18 @@ export const Grid = ({
   style,
   className,
 }: GridProps) => {
-  const { containerRef, rowAxis, colAxis, viewport, viewModel, handleScroll } = useGridKernel({
-    rowCount,
-    colCount,
-    defaultRowHeight,
-    defaultColWidth,
-    headerRowCount,
-    pinnedColStartCount,
-    pinnedColEndCount,
-    overscanPx,
-  });
+  const { containerRef, rowAxis, colAxis, viewport, viewModel, handleScroll, scrollToCell } =
+    useGridKernel({
+      rowCount,
+      colCount,
+      defaultRowHeight,
+      defaultColWidth,
+      colSizes,
+      headerRowCount,
+      pinnedColStartCount,
+      pinnedColEndCount,
+      overscanPx,
+    });
 
   // Stable refs so interaction handlers always see the latest values
   // without being recreated on every scroll
@@ -75,6 +81,14 @@ export const Grid = ({
     keyboardHandlers,
   } = useInteraction({ rowCount, colCount, headerRowCount }, viewportRef, rowAxisRef, colAxisRef);
 
+  // Scroll to keep the focused cell visible after keyboard navigation.
+  // Only fires when focusCell identity actually changes.
+  const focusCell = interactionState.focusCell;
+  useEffect(() => {
+    if (focusCell == null) return;
+    scrollToCell(focusCell.row, focusCell.col);
+  }, [focusCell, scrollToCell]);
+
   const renderState = useMemo<GridRenderState>(
     () => ({ interactionState, viewport }),
     [interactionState, viewport],
@@ -92,6 +106,9 @@ export const Grid = ({
         position: "relative",
         overflow: "auto",
         outline: "none",
+        // Shrink-wrap to content width so the scrollbar sits right next to the last column.
+        // When totalWidth > container width the max-width has no effect and horizontal scroll kicks in.
+        maxWidth: totalWidth,
         ...style,
       }}
       className={className}
@@ -144,6 +161,13 @@ export const Grid = ({
               overflow: "hidden",
               boxSizing: "border-box",
               pointerEvents: "auto",
+              // Header and pinned cells must stay on top of scrolling body cells.
+              zIndex:
+                cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd"
+                  ? 2
+                  : cell.kind === "pinnedStart" || cell.kind === "pinnedEnd"
+                    ? 1
+                    : 0,
             }}
           >
             {renderCell(cell, renderState)}

@@ -56,7 +56,7 @@ export const useInteraction = (
         colCount: spec.colCount,
         enableSelectAll: spec.enableSelectAll ?? true,
       }),
-     
+
     [spec.rowCount, spec.colCount, spec.enableSelectAll],
   );
 

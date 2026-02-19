@@ -80,7 +80,8 @@ export const hitTestGrid = (
   }
 
   if (inRowHeader) {
-    const absContentY = pointerY - headerHeightPx + scrollTop;
+    // inverse of y = rowOffset - scrollTop  →  rowOffset = y + scrollTop
+    const absContentY = pointerY + scrollTop;
     if (absContentY < 0) return { region: "row-header" };
     const row = rowAxis.findIndexAtOffsetPx(px(absContentY));
     return { region: "row-header", cell: { row, col: -1 } };
@@ -89,7 +90,8 @@ export const hitTestGrid = (
   // ---- body area ----
   if (col == null) return { region: "grid" };
 
-  const absContentY = pointerY - headerHeightPx + scrollTop;
+  // inverse of y = rowOffset - scrollTop  →  rowOffset = y + scrollTop
+  const absContentY = pointerY + scrollTop;
   if (absContentY < 0) return { region: "grid" };
 
   const row = rowAxis.findIndexAtOffsetPx(px(absContentY));

@@ -42,3 +42,9 @@ export {
   InteractionKernel,
   createInteractionKernelReducer,
 } from "./reducer/interaction-kernel-reducer";
+
+// -----------------------------
+// Data Pipeline (Phase 3)
+// -----------------------------
+export type { RowId, RowModel, SortDirection, SortSpec, FilterSpec } from "./row-model/row-model";
+export { createClientRowModel } from "./row-model/client-row-model";

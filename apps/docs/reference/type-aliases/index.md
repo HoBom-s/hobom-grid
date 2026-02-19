@@ -3,6 +3,7 @@
 > Auto-generated index for VitePress routing.
 
 ## Pages
+
 - [`Anchor`](./Anchor)
 - [`AxisKind`](./AxisKind)
 - [`AxisRange`](./AxisRange)
