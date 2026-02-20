@@ -1,7 +1,6 @@
 {
   "name": "@hobom-grid/react",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -19,6 +18,12 @@
   },
   "dependencies": {
     "@hobom-grid/core": "workspace:*"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
