@@ -4,6 +4,7 @@ export default defineConfig({
   title: "HoBom Grid",
   titleTemplate: "HoBom Grid",
   description: "Headless data grid engine with a React adapter",
+  base: "/hobom-grid/",
   ignoreDeadLinks: true,
 
   themeConfig: {
