@@ -48,3 +48,15 @@ export {
 // -----------------------------
 export type { RowId, RowModel, SortDirection, SortSpec, FilterSpec } from "./row-model/row-model";
 export { createClientRowModel } from "./row-model/client-row-model";
+
+// -----------------------------
+// Editing System (Phase 4)
+// -----------------------------
+export type {
+  CellChange,
+  ValidationResult,
+  ActiveEdit,
+  EditingState,
+} from "./editing/editing-state";
+export type { EditingAction } from "./editing/editing-action";
+export { editingReducer, EditingKernel } from "./editing/editing-reducer";

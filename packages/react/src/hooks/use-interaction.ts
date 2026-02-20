@@ -171,6 +171,10 @@ export const useInteraction = (
   ]);
 
   const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    // A keyboard extension (e.g., editing, clipboard) may have already handled
+    // this event and called e.preventDefault(). Respect that and bail out.
+    if (e.defaultPrevented) return;
+
     const key = e.key;
     const isSelectAll = key === "a" && (e.ctrlKey || e.metaKey);
 

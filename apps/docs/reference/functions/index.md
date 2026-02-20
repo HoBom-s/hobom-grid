@@ -4,6 +4,7 @@
 
 ## Pages
 
+- [`createClientRowModel`](./createClientRowModel)
 - [`createGridKernel`](./createGridKernel)
 - [`createInteractionKernelReducer`](./createInteractionKernelReducer)
 - [`createMeasuredAxis`](./createMeasuredAxis)
