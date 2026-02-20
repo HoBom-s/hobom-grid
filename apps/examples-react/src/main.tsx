@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
 import {
   Grid,
@@ -8,7 +8,11 @@ import {
   useColumnResize,
   useColumnReorder,
   useColumnVisibility,
+  useContextMenu,
+  ContextMenu,
+  useCsvExport,
 } from "@hobom-grid/react";
+import type { ContextMenuItem } from "@hobom-grid/react";
 import type { SortSpec } from "@hobom-grid/core";
 import type { CellVM, InteractionKernelState } from "@hobom-grid/core";
 
@@ -54,21 +58,23 @@ type ColDef = {
   width: number;
   align?: "left" | "right";
   editable?: boolean;
+  sortable?: boolean;
   format?: (v: unknown) => string;
   parse?: (raw: string, prev: unknown) => unknown;
 };
 
 const COLUMNS: ColDef[] = [
-  { key: "id", label: "ID", width: 70, align: "right" },
-  { key: "name", label: "Name", width: 180, editable: true },
-  { key: "department", label: "Department", width: 140, editable: true },
-  { key: "role", label: "Role", width: 110, editable: true },
+  { key: "id", label: "ID", width: 70, align: "right", sortable: true },
+  { key: "name", label: "Name", width: 180, editable: true, sortable: true },
+  { key: "department", label: "Department", width: 140, editable: true, sortable: true },
+  { key: "role", label: "Role", width: 110, editable: true, sortable: true },
   {
     key: "salary",
     label: "Salary",
     width: 120,
     align: "right",
     editable: true,
+    sortable: true,
     format: (v) => `$${(v as number).toLocaleString()}`,
     parse: (raw) => {
       const n = Number(raw.replace(/[^0-9.-]/g, ""));
@@ -81,6 +87,7 @@ const COLUMNS: ColDef[] = [
     width: 70,
     align: "right",
     editable: true,
+    sortable: true,
     parse: (raw) => Number(raw),
   },
   {
@@ -151,11 +158,8 @@ function App() {
   const [filterText, setFilterText] = useState("");
   const [sortState, setSortState] = useState<SortState>(null);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
-
-  // Mutable overrides on top of the immutable base data (row id → partial update).
   const [overrides, setOverrides] = useState<Map<number, Partial<Employee>>>(new Map());
 
-  // Merge base data with overrides.
   const rows = useMemo<Employee[]>(
     () =>
       overrides.size === 0
@@ -196,31 +200,23 @@ function App() {
 
   const totalRows = 1 + rowModel.rowCount;
 
-  // ── Phase 5: Column features ───────────────────────────────────────────────
+  // ── Column features (Phase 5) ──────────────────────────────────────────────
 
-  // Column resize — tracks per-original-index widths.
   const initialWidths = useMemo(
     () => Object.fromEntries(COLUMNS.map((col, i) => [i, col.width])),
     [],
   );
   const colResize = useColumnResize(initialWidths);
-
-  // Column visibility — tracks which original indices are hidden.
   const colVis = useColumnVisibility(COLUMNS.length);
 
-  // Column order — ordered list of ALL original col indices (including hidden).
-  // Reorder moves items within this array; the visible subset is filtered separately.
   const [allColOrder, setAllColOrder] = useState<number[]>(() => COLUMNS.map((_, i) => i));
 
-  // isVisible ref so the onReorder callback can read it without stale closure.
   const isVisibleRef = useRef(colVis.isVisible);
   // eslint-disable-next-line react-hooks/refs
   isVisibleRef.current = colVis.isVisible;
 
-  // Column reorder — called with visual indices in the *visible* list.
   const onReorder = useCallback((fromVisual: number, toVisual: number) => {
     setAllColOrder((prev) => {
-      // Map visual indices (in visible cols) back to positions in allColOrder.
       const visCols = prev.filter((i) => isVisibleRef.current(i));
       const fromOrig = visCols[fromVisual];
       const toOrig = visCols[toVisual];
@@ -237,18 +233,15 @@ function App() {
 
   const colReorder = useColumnReorder(onReorder);
 
-  // Final list: ordered visible original indices.  visibleCols[visualIdx] = origIdx.
   const visibleCols = useMemo(
     () => allColOrder.filter((i) => colVis.isVisible(i)),
     [allColOrder, colVis.isVisible],
   );
 
-  // Ref so renderCell / getValue don't become stale.
   const visibleColsRef = useRef(visibleCols);
   // eslint-disable-next-line react-hooks/refs
   visibleColsRef.current = visibleCols;
 
-  // colSizes for Grid: maps visual index → width of the original column.
   const colSizes = useMemo(
     () =>
       Object.fromEntries(
@@ -260,15 +253,44 @@ function App() {
     [visibleCols, colResize.colWidths],
   );
 
-  // ── Column chooser UI state ────────────────────────────────────────────────
+  // ── Column chooser UI ──────────────────────────────────────────────────────
 
   const [colChooserOpen, setColChooserOpen] = useState(false);
   const colChooserRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside.
-  const handleColChooserToggle = useCallback(() => setColChooserOpen((v) => !v), []);
+  // Close on outside click.
+  useEffect(() => {
+    if (!colChooserOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (colChooserRef.current && !colChooserRef.current.contains(e.target as Node)) {
+        setColChooserOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [colChooserOpen]);
 
-  // ── Value access (used by editing + clipboard) ─────────────────────────────
+  // ── Ecosystem (Phase 6) ────────────────────────────────────────────────────
+
+  const contextMenu = useContextMenu();
+
+  // CSV export — always reflects the current visible column order and filter.
+  const csvExport = useCsvExport<Employee>({
+    columns: useMemo(
+      () =>
+        visibleCols.map((origIdx) => {
+          const col = COLUMNS[origIdx]!;
+          return {
+            label: col.label,
+            getValue: (row: Employee) => row[col.key],
+            formatValue: col.format ? (v: unknown) => col.format!(v) : undefined,
+          };
+        }),
+      [visibleCols],
+    ),
+  });
+
+  // ── Value access ───────────────────────────────────────────────────────────
 
   const interactionStateRef = useRef<InteractionKernelState | null>(null);
 
@@ -375,7 +397,7 @@ function App() {
     stableInteractionState,
   );
 
-  // ── Merge keyboard extensions (editing + clipboard) ────────────────────────
+  // ── Keyboard extensions (editing + clipboard) ──────────────────────────────
 
   const keyboardExtension = useMemo(
     () => ({
@@ -386,6 +408,28 @@ function App() {
     }),
     [editing.gridExtension.keyboardExtension.onKeyDown, clipboard.onKeyDown],
   );
+
+  // ── Stable refs used inside renderCell closures ────────────────────────────
+
+  const sortStateRef = useRef(sortState);
+  // eslint-disable-next-line react-hooks/refs
+  sortStateRef.current = sortState;
+
+  const rowModelRef = useRef(rowModel);
+  // eslint-disable-next-line react-hooks/refs
+  rowModelRef.current = rowModel;
+
+  const clipboardRef = useRef(clipboard);
+  // eslint-disable-next-line react-hooks/refs
+  clipboardRef.current = clipboard;
+
+  const colVisRef = useRef(colVis);
+  // eslint-disable-next-line react-hooks/refs
+  colVisRef.current = colVis;
+
+  const colResizeRef = useRef(colResize);
+  // eslint-disable-next-line react-hooks/refs
+  colResizeRef.current = colResize;
 
   // ── Cell renderer ──────────────────────────────────────────────────────────
 
@@ -400,13 +444,67 @@ function App() {
       const isDragging = colReorder.dragState?.fromVisual === cell.colIndex;
       const isDropTarget = colReorder.dragState?.overVisual === cell.colIndex;
 
-      // ── Header row ─────────────────────────────────────────────────────────
+      // ── Header ─────────────────────────────────────────────────────────────
       if (cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd") {
-        // Report bounds so the reorder hook can compute drop targets.
         colReorder.reportColBounds(cell.colIndex, cell.x, cell.width);
 
         const isSorted = sortState?.key === col.key;
         const nextDir = isSorted && sortState?.direction === "asc" ? "desc" : "asc";
+
+        const handleHeaderContextMenu = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const ss = sortStateRef.current;
+          const cv = colVisRef.current;
+          const cr = colResizeRef.current;
+          const items: ContextMenuItem[] = [
+            { kind: "label", text: "Sort" },
+            {
+              kind: "action",
+              label: "Sort A → Z",
+              icon: "↑",
+              disabled: ss?.key === col.key && ss.direction === "asc",
+              onSelect: () => setSortState({ key: col.key, direction: "asc" }),
+            },
+            {
+              kind: "action",
+              label: "Sort Z → A",
+              icon: "↓",
+              disabled: ss?.key === col.key && ss.direction === "desc",
+              onSelect: () => setSortState({ key: col.key, direction: "desc" }),
+            },
+            {
+              kind: "action",
+              label: "Clear Sort",
+              icon: "✕",
+              disabled: ss?.key !== col.key,
+              onSelect: () => setSortState(null),
+            },
+            { kind: "separator" },
+            { kind: "label", text: "Column" },
+            {
+              kind: "action",
+              label: "Hide Column",
+              icon: "🙈",
+              onSelect: () => cv.toggleVisibility(origIdx),
+            },
+            {
+              kind: "action",
+              label: "Show All Columns",
+              icon: "👁",
+              disabled: cv.hiddenCount === 0,
+              onSelect: () => cv.showAll(),
+            },
+            { kind: "separator" },
+            {
+              kind: "action",
+              label: "Reset Width",
+              icon: "↔",
+              onSelect: () => cr.resetWidth(origIdx),
+            },
+          ];
+          contextMenu.openMenu(e.clientX, e.clientY, items);
+        };
 
         return (
           <div
@@ -417,7 +515,7 @@ function App() {
               display: "flex",
               alignItems: "center",
               paddingInline: 8,
-              paddingRight: 14, // room for resize handle
+              paddingRight: 14,
               background: isDragging ? "#dbeafe" : isDropTarget ? "#eff6ff" : "#f5f5f5",
               borderBottom: "2px solid #d1d5db",
               borderRight: isDropTarget ? "2px solid #3b82f6" : "1px solid #e5e7eb",
@@ -432,8 +530,6 @@ function App() {
               transition: "background 0.1s, border-color 0.1s",
             }}
             onPointerDown={(e) => {
-              // Compute container left: cell.x is viewport-relative,
-              // so containerLeft = absLeft - cell.x (invariant with scroll).
               const containerLeft = e.currentTarget.getBoundingClientRect().left - cell.x;
               colReorder.startReorder(
                 cell.colIndex,
@@ -444,6 +540,7 @@ function App() {
               e.stopPropagation();
             }}
             onClick={() => setSortState({ key: col.key, direction: nextDir })}
+            onContextMenu={handleHeaderContextMenu}
           >
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {col.label}
@@ -454,7 +551,7 @@ function App() {
               </span>
             )}
 
-            {/* Resize handle — right edge of header cell */}
+            {/* Resize handle */}
             <div
               style={{
                 position: "absolute",
@@ -464,7 +561,6 @@ function App() {
                 width: 6,
                 cursor: "col-resize",
                 zIndex: 1,
-                background: "transparent",
               }}
               onPointerDown={(e) => {
                 colResize.startResize(origIdx, e.clientX);
@@ -472,12 +568,16 @@ function App() {
                 e.preventDefault();
               }}
               onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => {
+                e.stopPropagation();
+                handleHeaderContextMenu(e);
+              }}
             />
           </div>
         );
       }
 
-      // ── Body rows ──────────────────────────────────────────────────────────
+      // ── Body ───────────────────────────────────────────────────────────────
       const dataIndex = cell.rowIndex - 1;
       if (dataIndex < 0 || dataIndex >= rowModel.rowCount) return null;
 
@@ -542,6 +642,7 @@ function App() {
           : dataIndex % 2 !== 0
             ? "#fafafa"
             : "#fff";
+
       const cellBase: React.CSSProperties = {
         width: "100%",
         height: "100%",
@@ -558,11 +659,83 @@ function App() {
         cursor: col.editable ? "text" : "default",
       };
 
+      const handleCellContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const hasSelection =
+          interactionState.selection.ranges.length > 0 &&
+          (interactionState.selection.ranges[0]!.start.row !==
+            interactionState.selection.ranges[0]!.end.row ||
+            interactionState.selection.ranges[0]!.start.col !==
+              interactionState.selection.ranges[0]!.end.col);
+
+        const cellValue = rawValue;
+        const cellText = col.format ? col.format(cellValue) : String(cellValue ?? "");
+        const cb = clipboardRef.current;
+        const ss = sortStateRef.current;
+
+        const items: ContextMenuItem[] = [
+          { kind: "label", text: "Clipboard" },
+          {
+            kind: "action",
+            label: "Copy Cell",
+            icon: "⎘",
+            shortcut: "Ctrl+C",
+            onSelect: () => void navigator.clipboard.writeText(cellText),
+          },
+          {
+            kind: "action",
+            label: "Copy Selection",
+            icon: "⎘",
+            disabled: !hasSelection,
+            onSelect: () => cb.copy(),
+          },
+          {
+            kind: "action",
+            label: "Paste",
+            icon: "⎗",
+            shortcut: "Ctrl+V",
+            onSelect: () => void cb.paste(),
+          },
+        ];
+
+        if (col.editable) {
+          items.push({ kind: "separator" });
+          items.push({
+            kind: "action",
+            label: "Edit Cell",
+            icon: "✏",
+            shortcut: "F2",
+            onSelect: () => editing.startEdit(cell.rowIndex, cell.colIndex),
+          });
+        }
+
+        if (col.sortable) {
+          items.push({ kind: "separator" });
+          items.push({ kind: "label", text: `Sort by ${col.label}` });
+          items.push({
+            kind: "action",
+            label: "Sort A → Z",
+            icon: "↑",
+            disabled: ss?.key === col.key && ss.direction === "asc",
+            onSelect: () => setSortState({ key: col.key, direction: "asc" }),
+          });
+          items.push({
+            kind: "action",
+            label: "Sort Z → A",
+            icon: "↓",
+            disabled: ss?.key === col.key && ss.direction === "desc",
+            onSelect: () => setSortState({ key: col.key, direction: "desc" }),
+          });
+        }
+
+        contextMenu.openMenu(e.clientX, e.clientY, items);
+      };
+
       // Department — emoji icon prefix
       if (col.key === "department") {
         const icon = DEPT_ICON[row.department] ?? "🏢";
         return (
-          <div style={{ ...cellBase, gap: 6 }}>
+          <div style={{ ...cellBase, gap: 6 }} onContextMenu={handleCellContextMenu}>
             <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
             <span style={{ color: "#111827" }}>{row.department}</span>
           </div>
@@ -573,7 +746,7 @@ function App() {
       if (col.key === "role") {
         const roleStyle = ROLE_STYLE[row.role] ?? {};
         return (
-          <div style={{ ...cellBase }}>
+          <div style={{ ...cellBase }} onContextMenu={handleCellContextMenu}>
             <span
               style={{
                 ...roleStyle,
@@ -602,6 +775,7 @@ function App() {
               gap: 2,
               paddingBlock: 4,
             }}
+            onContextMenu={handleCellContextMenu}
           >
             <span style={{ color: salaryColor(row.salary), fontWeight: 500, fontSize: 12 }}>
               ${row.salary.toLocaleString()}
@@ -623,7 +797,10 @@ function App() {
       // Active — clickable toggle pill
       if (col.key === "active") {
         return (
-          <div style={{ ...cellBase, justifyContent: "center" }}>
+          <div
+            style={{ ...cellBase, justifyContent: "center" }}
+            onContextMenu={handleCellContextMenu}
+          >
             <button
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => {
@@ -658,13 +835,21 @@ function App() {
             justifyContent: col.align === "right" ? "flex-end" : "flex-start",
             color: "#111827",
           }}
+          onContextMenu={handleCellContextMenu}
         >
           {display}
         </div>
       );
     },
-    [rowModel, sortState, editing, setOverrides, colReorder, colResize],
+    [rowModel, sortState, editing, setOverrides, colReorder, colResize, contextMenu.openMenu],
   );
+
+  // ── Export CSV handler ─────────────────────────────────────────────────────
+
+  const handleExportCsv = useCallback(() => {
+    const exportRows = Array.from({ length: rowModel.rowCount }, (_, i) => rowModel.getRow(i));
+    csvExport.exportCsv(exportRows, "employees.csv");
+  }, [rowModel, csvExport]);
 
   return (
     <div
@@ -718,17 +903,7 @@ function App() {
         </label>
 
         {sortState && (
-          <button
-            onClick={() => setSortState(null)}
-            style={{
-              padding: "4px 10px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 12,
-              cursor: "pointer",
-              background: "#fff",
-            }}
-          >
+          <button onClick={() => setSortState(null)} style={btnStyle}>
             Clear sort ×
           </button>
         )}
@@ -736,30 +911,18 @@ function App() {
         {overrides.size > 0 && (
           <button
             onClick={() => setOverrides(new Map())}
-            style={{
-              padding: "4px 10px",
-              border: "1px solid #f87171",
-              borderRadius: 6,
-              fontSize: 12,
-              cursor: "pointer",
-              background: "#fff",
-              color: "#dc2626",
-            }}
+            style={{ ...btnStyle, borderColor: "#f87171", color: "#dc2626" }}
           >
             Reset edits ({overrides.size})
           </button>
         )}
 
-        {/* ── Column chooser ────────────────────────────────────────────── */}
+        {/* Column chooser */}
         <div ref={colChooserRef} style={{ position: "relative" }}>
           <button
-            onClick={handleColChooserToggle}
+            onClick={() => setColChooserOpen((v) => !v)}
             style={{
-              padding: "5px 10px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 13,
-              cursor: "pointer",
+              ...btnStyle,
               background: colChooserOpen ? "#f5f5f5" : "#fff",
               display: "flex",
               alignItems: "center",
@@ -767,10 +930,10 @@ function App() {
             }}
           >
             <span>Columns</span>
-            <span style={{ fontSize: 10, color: "#6b7280" }}>
+            <span style={{ fontSize: 11, color: "#6b7280" }}>
               {visibleCols.length}/{COLUMNS.length}
             </span>
-            <span style={{ fontSize: 10 }}>{colChooserOpen ? "▲" : "▼"}</span>
+            <span style={{ fontSize: 9 }}>{colChooserOpen ? "▲" : "▼"}</span>
           </button>
 
           {colChooserOpen && (
@@ -780,7 +943,7 @@ function App() {
                 top: "calc(100% + 4px)",
                 left: 0,
                 background: "#fff",
-                border: "1px solid #d1d5db",
+                border: "1px solid #e5e7eb",
                 borderRadius: 8,
                 padding: "6px 0",
                 minWidth: 170,
@@ -799,7 +962,6 @@ function App() {
                     cursor: "pointer",
                     fontSize: 13,
                     color: colVis.isVisible(i) ? "#111827" : "#9ca3af",
-                    background: "transparent",
                   }}
                   onMouseEnter={(e) =>
                     ((e.currentTarget as HTMLElement).style.background = "#f9fafb")
@@ -817,14 +979,40 @@ function App() {
                   {col.label}
                 </label>
               ))}
+              {colVis.hiddenCount > 0 && (
+                <>
+                  <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />
+                  <button
+                    onClick={() => colVis.showAll()}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "5px 14px",
+                      border: "none",
+                      background: "transparent",
+                      color: "#3b82f6",
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Show all columns
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
 
+        {/* Export CSV */}
+        <button onClick={handleExportCsv} style={btnStyle}>
+          Export CSV ↓
+        </button>
+
         <span style={{ marginLeft: "auto", fontSize: 12, color: "#6b7280" }}>
           {rowModel.rowCount.toLocaleString()} / {BASE_DATA.length.toLocaleString()} rows
-          &nbsp;·&nbsp;drag header to reorder&nbsp;·&nbsp;drag right edge to resize
-          &nbsp;·&nbsp;double-click or F2 to edit
+          &nbsp;·&nbsp;right-click for menu&nbsp;·&nbsp;drag header to reorder &nbsp;·&nbsp;F2 /
+          double-click to edit
         </span>
       </header>
 
@@ -849,9 +1037,23 @@ function App() {
           }}
         />
       </div>
+
+      {/* Context menu — rendered as a portal into document.body */}
+      <ContextMenu state={contextMenu.menuState} onClose={contextMenu.closeMenu} />
     </div>
   );
 }
+
+// Shared button style
+const btnStyle: React.CSSProperties = {
+  padding: "5px 10px",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  fontSize: 13,
+  cursor: "pointer",
+  background: "#fff",
+  color: "#374151",
+};
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

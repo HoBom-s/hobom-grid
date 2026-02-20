@@ -9,6 +9,8 @@ export type UseColumnResizeResult = Readonly<{
    * The caller is responsible for `e.stopPropagation()` and `e.preventDefault()`.
    */
   startResize: (origColIdx: number, clientX: number) => void;
+  /** Reset a column to its initial width (removes the override). */
+  resetWidth: (origColIdx: number) => void;
 }>;
 
 /**
@@ -59,5 +61,13 @@ export const useColumnResize = (
     [minWidth],
   );
 
-  return { colWidths, startResize };
+  const resetWidth = useCallback((origColIdx: number) => {
+    setColWidths((prev) => {
+      const next = { ...prev };
+      delete next[origColIdx];
+      return next;
+    });
+  }, []);
+
+  return { colWidths, startResize, resetWidth };
 };

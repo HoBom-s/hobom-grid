@@ -5,6 +5,8 @@ export type UseColumnVisibilityResult = Readonly<{
   isVisible: (origIdx: number) => boolean;
   /** Toggle the visibility of the column with the given original index. */
   toggleVisibility: (origIdx: number) => void;
+  /** Make all columns visible. */
+  showAll: () => void;
   /** Number of currently hidden columns. */
   hiddenCount: number;
 }>;
@@ -38,5 +40,7 @@ export const useColumnVisibility = (_colCount: number): UseColumnVisibilityResul
     });
   }, []);
 
-  return { isVisible, toggleVisibility, hiddenCount: hiddenCols.size };
+  const showAll = useCallback(() => setHiddenCols(new Set()), []);
+
+  return { isVisible, toggleVisibility, showAll, hiddenCount: hiddenCols.size };
 };

@@ -29,3 +29,27 @@ export type { UseColumnReorderResult, DragReorderState } from "./hooks/use-colum
 
 export { useColumnVisibility } from "./hooks/use-column-visibility";
 export type { UseColumnVisibilityResult } from "./hooks/use-column-visibility";
+
+// Row features
+export { useRowSelection } from "./hooks/use-row-selection";
+export type { UseRowSelectionResult } from "./hooks/use-row-selection";
+
+export { useAggregateRow } from "./hooks/use-aggregate-row";
+export type { UseAggregateRowResult, AggColumnDef, AggFn } from "./hooks/use-aggregate-row";
+
+// Ecosystem (Phase 6)
+export { useContextMenu } from "./hooks/use-context-menu";
+export type {
+  UseContextMenuResult,
+  ContextMenuState,
+  ContextMenuItem,
+  ContextMenuAction,
+  ContextMenuSeparator,
+  ContextMenuLabel,
+} from "./hooks/use-context-menu";
+
+export { ContextMenu } from "./components/ContextMenu";
+export type { ContextMenuProps } from "./components/ContextMenu";
+
+export { useCsvExport } from "./hooks/use-csv-export";
+export type { UseCsvExportOpts, UseCsvExportResult, CsvColumnDef } from "./hooks/use-csv-export";

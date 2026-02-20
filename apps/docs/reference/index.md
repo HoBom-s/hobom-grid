@@ -1,6 +1,6 @@
 **@hobom-grid/core**
 
-***
+---
 
 # @hobom-grid/core
 

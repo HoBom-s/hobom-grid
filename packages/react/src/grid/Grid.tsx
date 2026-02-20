@@ -42,6 +42,10 @@ export type GridProps = Readonly<{
    */
   keyboardExtension?: Readonly<{ onKeyDown: React.KeyboardEventHandler<HTMLDivElement> }>;
 
+  // Accessibility
+  /** ARIA label for the grid container. Defaults to "Data grid". */
+  ariaLabel?: string;
+
   // Styling
   style?: React.CSSProperties;
   className?: string;
@@ -60,6 +64,7 @@ export const Grid = ({
   renderCell,
   onCellDoubleClick,
   keyboardExtension,
+  ariaLabel = "Data grid",
   style,
   className,
 }: GridProps) => {
@@ -151,9 +156,17 @@ export const Grid = ({
   const viewportWidth = Number(viewport.viewportWidthPx);
   const viewportHeight = Number(viewport.viewportHeightPx);
 
+  // Body row count (excludes header rows) for ARIA.
+  const bodyRowCount = Math.max(0, rowCount - headerRowCount);
+
   return (
     <div
       ref={containerRef}
+      role="grid"
+      aria-label={ariaLabel}
+      aria-rowcount={bodyRowCount}
+      aria-colcount={colCount}
+      aria-multiselectable={true}
       style={{
         position: "relative",
         overflow: "auto",
@@ -205,29 +218,37 @@ export const Grid = ({
           pointerEvents: "none",
         }}
       >
-        {viewModel.cells.map((cell) => (
-          <div
-            key={`${cell.kind}-${cell.rowIndex}-${cell.colIndex}`}
-            style={{
-              position: "absolute",
-              transform: `translate(${cell.x}px, ${cell.y}px)`,
-              width: cell.width,
-              height: cell.height,
-              overflow: "hidden",
-              boxSizing: "border-box",
-              pointerEvents: "auto",
-              // Header and pinned cells must stay on top of scrolling body cells.
-              zIndex:
-                cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd"
-                  ? 2
-                  : cell.kind === "pinnedStart" || cell.kind === "pinnedEnd"
-                    ? 1
-                    : 0,
-            }}
-          >
-            {renderCell(cell, renderState)}
-          </div>
-        ))}
+        {viewModel.cells.map((cell) => {
+          const isHeader =
+            cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd";
+          const isPinned = cell.kind === "pinnedStart" || cell.kind === "pinnedEnd";
+          const isFocused =
+            interactionState.focusCell?.row === cell.rowIndex &&
+            interactionState.focusCell?.col === cell.colIndex;
+
+          return (
+            <div
+              key={`${cell.kind}-${cell.rowIndex}-${cell.colIndex}`}
+              role={isHeader ? "columnheader" : "gridcell"}
+              aria-rowindex={cell.rowIndex + 1}
+              aria-colindex={cell.colIndex + 1}
+              aria-selected={isFocused || undefined}
+              style={{
+                position: "absolute",
+                transform: `translate(${cell.x}px, ${cell.y}px)`,
+                width: cell.width,
+                height: cell.height,
+                overflow: "hidden",
+                boxSizing: "border-box",
+                pointerEvents: "auto",
+                // Header and pinned cells must stay on top of scrolling body cells.
+                zIndex: isHeader ? 2 : isPinned ? 1 : 0,
+              }}
+            >
+              {renderCell(cell, renderState)}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
