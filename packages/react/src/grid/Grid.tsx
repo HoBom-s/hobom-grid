@@ -1,7 +1,8 @@
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, useCallback } from "react";
 import type { CellVM, InteractionKernelState, ViewportModel } from "@hobom-grid/core";
 import { useGridKernel } from "../hooks/use-grid-kernel";
 import { useInteraction } from "../hooks/use-interaction";
+import { hitTestGrid } from "../utils/hit-test";
 
 export type GridRenderState = Readonly<{
   interactionState: InteractionKernelState;
@@ -31,6 +32,16 @@ export type GridProps = Readonly<{
   // Cell renderer
   renderCell: (cell: CellVM, state: GridRenderState) => React.ReactNode;
 
+  // Editing / clipboard integration
+  /** Called when a body cell receives a double-click. Wire to `useEditing.gridExtension`. */
+  onCellDoubleClick?: (row: number, col: number) => void;
+  /**
+   * Additional keyboard handler, called before the built-in interaction handler.
+   * If the extension calls `e.preventDefault()`, interaction navigation is suppressed.
+   * Wire to `useEditing.gridExtension` and/or `useClipboard`.
+   */
+  keyboardExtension?: Readonly<{ onKeyDown: React.KeyboardEventHandler<HTMLDivElement> }>;
+
   // Styling
   style?: React.CSSProperties;
   className?: string;
@@ -47,6 +58,8 @@ export const Grid = ({
   pinnedColEndCount = 0,
   overscanPx = 150,
   renderCell,
+  onCellDoubleClick,
+  keyboardExtension,
   style,
   className,
 }: GridProps) => {
@@ -94,6 +107,45 @@ export const Grid = ({
     [interactionState, viewport],
   );
 
+  // ── Double-click → onCellDoubleClick ──────────────────────────────────────
+  const onCellDoubleClickRef = useRef(onCellDoubleClick);
+  // eslint-disable-next-line react-hooks/refs
+  onCellDoubleClickRef.current = onCellDoubleClick;
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const cb = onCellDoubleClickRef.current;
+      if (!cb) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const hit = hitTestGrid(
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+        viewportRef.current,
+        rowAxisRef.current,
+        colAxisRef.current,
+        { headerRowCount, resizeHandleSlop: 0 },
+      );
+      if (hit.region === "cell" && hit.cell) {
+        cb(hit.cell.row, hit.cell.col);
+      }
+    },
+    // headerRowCount rarely changes; refs are stable
+    [headerRowCount],
+  );
+
+  // ── Keyboard: extension first, then interaction ───────────────────────────
+  const keyboardExtensionRef = useRef(keyboardExtension);
+  // eslint-disable-next-line react-hooks/refs
+  keyboardExtensionRef.current = keyboardExtension;
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      keyboardExtensionRef.current?.onKeyDown(e);
+      keyboardHandlers.onKeyDown(e); // bails if e.defaultPrevented
+    },
+    [keyboardHandlers.onKeyDown],
+  );
+
   const totalWidth = Number(viewport.totalWidthPx);
   const totalHeight = Number(viewport.totalHeightPx);
   const viewportWidth = Number(viewport.viewportWidthPx);
@@ -114,8 +166,11 @@ export const Grid = ({
       className={className}
       tabIndex={0}
       onScroll={handleScroll}
+      onDoubleClick={handleDoubleClick}
       {...pointerHandlers}
-      {...keyboardHandlers}
+      onKeyDown={handleKeyDown}
+      onFocus={keyboardHandlers.onFocus}
+      onBlur={keyboardHandlers.onBlur}
     >
       {/* Scroll area sizer — creates the scrollable content dimensions */}
       <div
