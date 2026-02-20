@@ -5,10 +5,13 @@ export type UseColumnResizeResult = Readonly<{
   colWidths: Record<number, number>;
   /**
    * Call from a resize-handle's `onPointerDown` to start a live resize.
-   * Pass the original column index and the pointer's clientX.
+   * Pass the original column index and the React pointer event.
    * The caller is responsible for `e.stopPropagation()` and `e.preventDefault()`.
+   *
+   * Uses `setPointerCapture` so the drag continues even when the pointer
+   * leaves the element or the browser window.
    */
-  startResize: (origColIdx: number, clientX: number) => void;
+  startResize: (origColIdx: number, e: React.PointerEvent<HTMLElement>) => void;
   /** Reset a column to its initial width (removes the override). */
   resetWidth: (origColIdx: number) => void;
 }>;
@@ -21,7 +24,7 @@ export type UseColumnResizeResult = Readonly<{
  * <div
  *   style={{ position:"absolute", right:0, top:0, bottom:0, width:6, cursor:"col-resize" }}
  *   onPointerDown={(e) => {
- *     colResize.startResize(origColIdx, e.clientX);
+ *     colResize.startResize(origColIdx, e);
  *     e.stopPropagation();
  *     e.preventDefault();
  *   }}
@@ -41,22 +44,25 @@ export const useColumnResize = (
   colWidthsRef.current = colWidths;
 
   const startResize = useCallback(
-    (origColIdx: number, clientX: number) => {
-      const startWidth = colWidthsRef.current[origColIdx] ?? 120;
-      const startX = clientX;
+    (origColIdx: number, e: React.PointerEvent<HTMLElement>) => {
+      const el = e.currentTarget;
+      el.setPointerCapture(e.pointerId);
 
-      const onMove = (e: PointerEvent) => {
-        const newWidth = Math.max(minWidth, startWidth + (e.clientX - startX));
+      const startWidth = colWidthsRef.current[origColIdx] ?? 120;
+      const startX = e.clientX;
+
+      const onMove = (ev: PointerEvent) => {
+        const newWidth = Math.max(minWidth, startWidth + (ev.clientX - startX));
         setColWidths((prev) => ({ ...prev, [origColIdx]: newWidth }));
       };
 
       const onUp = () => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
       };
 
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
     },
     [minWidth],
   );

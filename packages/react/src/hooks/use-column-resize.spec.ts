@@ -1,6 +1,25 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useColumnResize } from "./use-column-resize";
+import type React from "react";
+
+/** Build a minimal mock that satisfies the PointerEvent + currentTarget contract. */
+function makeMockEvent(clientX: number): React.PointerEvent<HTMLElement> {
+  const listeners: Record<string, EventListener[]> = {};
+  const el = {
+    setPointerCapture: vi.fn(),
+    addEventListener: (type: string, fn: EventListener) => {
+      (listeners[type] ??= []).push(fn);
+    },
+    removeEventListener: (type: string, fn: EventListener) => {
+      listeners[type] = (listeners[type] ?? []).filter((f) => f !== fn);
+    },
+    _fire: (type: string, event: PointerEvent) => {
+      (listeners[type] ?? []).forEach((fn) => fn(event));
+    },
+  };
+  return { currentTarget: el, pointerId: 1, clientX } as unknown as React.PointerEvent<HTMLElement>;
+}
 
 describe("useColumnResize", () => {
   it("initialises with provided widths", () => {
@@ -11,49 +30,42 @@ describe("useColumnResize", () => {
   });
 
   it("startResize updates width on pointer move", () => {
-    const listeners: Record<string, EventListener> = {};
-    vi.spyOn(window, "addEventListener").mockImplementation((type, fn) => {
-      listeners[type] = fn as EventListener;
-    });
-    vi.spyOn(window, "removeEventListener").mockImplementation(() => {});
-
     const { result } = renderHook(() => useColumnResize({ 0: 100 }));
+    const e = makeMockEvent(500);
+    const el = e.currentTarget as unknown as ReturnType<typeof makeMockEvent>["currentTarget"] & {
+      _fire: (type: string, event: PointerEvent) => void;
+    };
 
-    act(() => result.current.startResize(0, 500));
+    act(() => result.current.startResize(0, e));
+    expect(el.setPointerCapture).toHaveBeenCalledWith(1);
+
     // Simulate pointer move 50px to the right → new width = 100 + 50 = 150
     act(() => {
-      listeners["pointermove"]?.(new PointerEvent("pointermove", { clientX: 550 }));
+      el._fire("pointermove", new PointerEvent("pointermove", { clientX: 550 }));
     });
     expect(result.current.colWidths[0]).toBe(150);
 
     // Simulate pointer up to clean up
     act(() => {
-      listeners["pointerup"]?.(new PointerEvent("pointerup"));
+      el._fire("pointerup", new PointerEvent("pointerup"));
     });
-
-    vi.restoreAllMocks();
   });
 
   it("enforces minWidth", () => {
-    const listeners: Record<string, EventListener> = {};
-    vi.spyOn(window, "addEventListener").mockImplementation((type, fn) => {
-      listeners[type] = fn as EventListener;
-    });
-    vi.spyOn(window, "removeEventListener").mockImplementation(() => {});
-
     const { result } = renderHook(() => useColumnResize({ 0: 100 }, 60));
+    const e = makeMockEvent(500);
+    const el = e.currentTarget as unknown as { _fire: (type: string, event: PointerEvent) => void };
 
-    act(() => result.current.startResize(0, 500));
+    act(() => result.current.startResize(0, e));
     // Move 200px to the left → would be -100px but clamped to minWidth=60
     act(() => {
-      listeners["pointermove"]?.(new PointerEvent("pointermove", { clientX: 300 }));
+      el._fire("pointermove", new PointerEvent("pointermove", { clientX: 300 }));
     });
     expect(result.current.colWidths[0]).toBe(60);
 
     act(() => {
-      listeners["pointerup"]?.(new PointerEvent("pointerup"));
+      el._fire("pointerup", new PointerEvent("pointerup"));
     });
-    vi.restoreAllMocks();
   });
 
   it("resetWidth removes the override for that column", () => {

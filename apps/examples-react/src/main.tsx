@@ -198,8 +198,6 @@ function App() {
     filter,
   });
 
-  const totalRows = 1 + rowModel.rowCount;
-
   // ── Column features (Phase 5) ──────────────────────────────────────────────
 
   const initialWidths = useMemo(
@@ -563,7 +561,7 @@ function App() {
                 zIndex: 1,
               }}
               onPointerDown={(e) => {
-                colResize.startResize(origIdx, e.clientX);
+                colResize.startResize(origIdx, e);
                 e.stopPropagation();
                 e.preventDefault();
               }}
@@ -1019,7 +1017,7 @@ function App() {
       {/* Grid */}
       <div style={{ flex: 1, overflow: "hidden", padding: 12 }}>
         <Grid
-          rowCount={totalRows}
+          rowCount={rowModel.rowCount}
           colCount={visibleCols.length}
           headerRowCount={1}
           defaultRowHeight={32}
