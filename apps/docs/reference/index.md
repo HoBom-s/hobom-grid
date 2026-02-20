@@ -1,16 +1,20 @@
 **@hobom-grid/core**
 
----
+***
 
 # @hobom-grid/core
 
 ## Type Aliases
 
+- [ActiveEdit](type-aliases/ActiveEdit.md)
 - [Anchor](type-aliases/Anchor.md)
 - [AxisKind](type-aliases/AxisKind.md)
 - [AxisRange](type-aliases/AxisRange.md)
+- [CellChange](type-aliases/CellChange.md)
 - [CellKind](type-aliases/CellKind.md)
 - [CellVM](type-aliases/CellVM.md)
+- [EditingAction](type-aliases/EditingAction.md)
+- [EditingState](type-aliases/EditingState.md)
 - [FilterSpec](type-aliases/FilterSpec.md)
 - [GridCellRef](type-aliases/GridCellRef.md)
 - [GridLayout](type-aliases/GridLayout.md)
@@ -25,6 +29,7 @@
 - [RowModel](type-aliases/RowModel.md)
 - [SortDirection](type-aliases/SortDirection.md)
 - [SortSpec](type-aliases/SortSpec.md)
+- [ValidationResult](type-aliases/ValidationResult.md)
 - [ViewModel](type-aliases/ViewModel.md)
 - [ViewportModel](type-aliases/ViewportModel.md)
 - [ViewportQuery](type-aliases/ViewportQuery.md)
@@ -32,6 +37,7 @@
 ## Variables
 
 - [defaultHitTest](variables/defaultHitTest.md)
+- [EditingKernel](variables/EditingKernel.md)
 - [InteractionKernel](variables/InteractionKernel.md)
 
 ## Functions
@@ -40,4 +46,5 @@
 - [createGridKernel](functions/createGridKernel.md)
 - [createInteractionKernelReducer](functions/createInteractionKernelReducer.md)
 - [createMeasuredAxis](functions/createMeasuredAxis.md)
+- [editingReducer](functions/editingReducer.md)
 - [px](functions/px.md)

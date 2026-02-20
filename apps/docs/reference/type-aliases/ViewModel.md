@@ -1,6 +1,6 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
 [@hobom-grid/core](../README.md) / ViewModel
 
