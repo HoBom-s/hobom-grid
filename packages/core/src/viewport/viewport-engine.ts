@@ -206,7 +206,9 @@ export const createViewportEngine = (spec: ViewportEngineSpec) => {
     const anchorOffsetY = Number(rows.getOffsetPx(anchorRow));
     const inHeader =
       headerSlice.range.end >= headerSlice.range.start && anchorRow <= headerSlice.range.end;
-    const anchorViewportY = inHeader ? anchorOffsetY : headerHeightPx + (anchorOffsetY - scrollTop);
+    // header: anchorOffsetY is already viewport-Y (no scroll)
+    // body:   viewport-Y = rowOffset - scrollTop  (symmetric with view-model-builder)
+    const anchorViewportY = inHeader ? anchorOffsetY : anchorOffsetY - scrollTop;
 
     const anchor: Anchor = {
       rowIndex: anchorRow,

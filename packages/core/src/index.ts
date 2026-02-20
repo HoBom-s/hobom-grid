@@ -29,3 +29,34 @@ export { createGridKernel } from "./grid/create-grid";
 // -----------------------------
 export type { ViewportModel } from "./viewport/viewport-model";
 export type { ViewModel, CellVM } from "./viewmodel/view-model";
+
+// -----------------------------
+// Interaction Kernel (Phase 2)
+// -----------------------------
+export type { GridLayout, HitTarget, GridCellRef } from "./contracts/hit-test-model";
+export type { InteractionAction, ModifierKeys } from "./contracts/interaction-action";
+export type { InteractionKernelState } from "./state/interaction-kernel-state";
+
+export { defaultHitTest } from "./contracts/hit-test-model";
+export {
+  InteractionKernel,
+  createInteractionKernelReducer,
+} from "./reducer/interaction-kernel-reducer";
+
+// -----------------------------
+// Data Pipeline (Phase 3)
+// -----------------------------
+export type { RowId, RowModel, SortDirection, SortSpec, FilterSpec } from "./row-model/row-model";
+export { createClientRowModel } from "./row-model/client-row-model";
+
+// -----------------------------
+// Editing System (Phase 4)
+// -----------------------------
+export type {
+  CellChange,
+  ValidationResult,
+  ActiveEdit,
+  EditingState,
+} from "./editing/editing-state";
+export type { EditingAction } from "./editing/editing-action";
+export { editingReducer, EditingKernel } from "./editing/editing-reducer";

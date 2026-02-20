@@ -29,7 +29,6 @@ export const createViewModelBuilder = (spec: ViewModelBuilderSpec) => {
     const colEnd = vp.cols.end.range;
 
     const rowHeaderY = Number(vp.transforms.rowHeaderY);
-    const rowBodyY = Number(vp.transforms.rowBodyY);
 
     const colPinnedStartX = Number(vp.transforms.colPinnedStartX);
     const colMainX = Number(vp.transforms.colMainX);
@@ -99,12 +98,14 @@ export const createViewModelBuilder = (spec: ViewModelBuilderSpec) => {
 
     // ---------------------------
     // Body rows
-    // - Y is translated by scrollTop and shifted under header
+    // - Y: rowOffset - scrollTop
+    //   (rowBodyY = headerHeight cancels with the header offset baked into rowOffset,
+    //    so the net formula is simply content_offset - scroll)
     // - X rules are the same as above
     // ---------------------------
     iter(bodyRows, (ri) => {
       const rowOffset = Number(rows.getOffsetPx(ri));
-      const y = rowBodyY + (rowOffset - scrollTop);
+      const y = rowOffset - scrollTop;
 
       iter(colStart, (ci) => {
         const x = colPinnedStartX + Number(cols.getOffsetPx(ci));

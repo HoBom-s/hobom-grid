@@ -1,33 +1,25 @@
-# hobom-grid
+---
+layout: home
 
-A headless, framework-agnostic data grid engine.
+hero:
+  name: HoBom Grid
+  text: Headless data grid engine
+  tagline: Framework-agnostic core with a React adapter. Virtualized, composable, and fully typed.
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /docs/getting-started
+    - theme: alt
+      text: API Reference
+      link: /reference/
 
-- **Core engine**: `@hobom-grid/core`
-- **UI adapter**: `@hobom-grid/react`
-
-## What is hobom-grid?
-
-hobom-grid is designed as a **headless-first grid engine**.
-The core package is completely UI-agnostic and exposes only state and view models.
-UI frameworks consume the view model and handle rendering separately.
-
-## Packages
-
-### @hobom-grid/core
-- Grid state management
-- Virtualized row calculations
-- Column layout computation
-- View model generation
-
-### @hobom-grid/react
-- React renderer and hooks
-- Example implementation of the core engine
-
-## Documentation Structure
-
-- **Guide**: Conceptual explanations and usage
-- **API Reference**: Auto-generated from TypeScript types
-
-## Getting Started
-
-If you are looking for development commands, see the repository README.
+features:
+  - title: Headless Core
+    details: Pure TypeScript engine with zero DOM dependencies. Bring your own renderer — React, Vue, Svelte, or canvas.
+  - title: O(log N) Virtualization
+    details: Fenwick-tree based row/column virtualization handles millions of rows at native scroll speed.
+  - title: Composable Hooks
+    details: Every feature — sorting, filtering, editing, selection, column resize — is a standalone hook you opt into.
+  - title: Fully Typed
+    details: All public APIs are TypeScript-first with full generic support and auto-generated API reference.
+---
