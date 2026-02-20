@@ -11,6 +11,10 @@ export type GridRenderState = Readonly<{
 
 export type GridProps = Readonly<{
   // Data size
+  /**
+   * Number of **body (data) rows** — does NOT include header rows.
+   * Wire directly to `useClientRowModel().rowCount`.
+   */
   rowCount: number;
   colCount: number;
 
@@ -68,9 +72,12 @@ export const Grid = ({
   style,
   className,
 }: GridProps) => {
+  // rowCount prop = body rows only; kernel needs total (header + body).
+  const totalRowCount = rowCount + headerRowCount;
+
   const { containerRef, rowAxis, colAxis, viewport, viewModel, handleScroll, scrollToCell } =
     useGridKernel({
-      rowCount,
+      rowCount: totalRowCount,
       colCount,
       defaultRowHeight,
       defaultColWidth,
@@ -97,7 +104,12 @@ export const Grid = ({
     state: interactionState,
     pointerHandlers,
     keyboardHandlers,
-  } = useInteraction({ rowCount, colCount, headerRowCount }, viewportRef, rowAxisRef, colAxisRef);
+  } = useInteraction(
+    { rowCount: totalRowCount, colCount, headerRowCount },
+    viewportRef,
+    rowAxisRef,
+    colAxisRef,
+  );
 
   // Scroll to keep the focused cell visible after keyboard navigation.
   // Only fires when focusCell identity actually changes.
@@ -156,8 +168,8 @@ export const Grid = ({
   const viewportWidth = Number(viewport.viewportWidthPx);
   const viewportHeight = Number(viewport.viewportHeightPx);
 
-  // Body row count (excludes header rows) for ARIA.
-  const bodyRowCount = Math.max(0, rowCount - headerRowCount);
+  // rowCount prop is already the body row count.
+  const bodyRowCount = Math.max(0, rowCount);
 
   return (
     <div
