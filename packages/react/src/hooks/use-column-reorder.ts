@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DragReorderState = Readonly<{
   /** Visual index of the column being dragged. */
@@ -69,6 +69,15 @@ export const useColumnReorder = (
   // eslint-disable-next-line react-hooks/refs
   onReorderRef.current = onReorder;
 
+  // Cleanup ref: removes window listeners if the component unmounts mid-drag.
+  const cleanupRef = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      cleanupRef.current?.();
+    },
+    [],
+  );
+
   const reportColBounds = useCallback((visualIdx: number, x: number, width: number) => {
     colBoundsRef.current[visualIdx] = { x, width };
   }, []);
@@ -103,9 +112,14 @@ export const useColumnReorder = (
         }
       };
 
-      const onUp = () => {
+      const detach = () => {
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        cleanupRef.current = null;
+      };
+
+      const onUp = () => {
+        detach();
         setDragState((prev) => {
           if (!prev || prev.fromVisual === prev.overVisual) return null;
           onReorderRef.current(prev.fromVisual, prev.overVisual);
@@ -115,6 +129,7 @@ export const useColumnReorder = (
 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      cleanupRef.current = detach;
     },
     [],
   );

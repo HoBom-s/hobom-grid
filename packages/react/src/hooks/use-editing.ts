@@ -91,6 +91,9 @@ export const useEditing = <TValue = unknown>(
   // eslint-disable-next-line react-hooks/refs
   optsRef.current = opts;
 
+  // Guard against concurrent commit() calls (async validation can overlap).
+  const committingRef = useRef(false);
+
   // ── startEdit ─────────────────────────────────────────────────────────────
 
   const startEdit = useCallback((row: number, col: number) => {
@@ -110,35 +113,43 @@ export const useEditing = <TValue = unknown>(
   // Stable — uses refs for current state/opts.
 
   const commit = useCallback(async () => {
+    if (committingRef.current) return;
     const edit = stateRef.current.activeEdit;
     if (!edit) return;
 
-    const { row, col, initialValue, currentValue } = edit;
-    const { validate, onCommit } = optsRef.current;
+    committingRef.current = true;
+    try {
+      const { row, col, initialValue, currentValue } = edit;
+      const { validate, onCommit } = optsRef.current;
 
-    if (validate) {
-      dispatch({ type: "SetValidating", row, col });
-      const result = await validate(currentValue as TValue, { row, col });
-      dispatch({
-        type: "SetValidationResult",
-        row,
-        col,
-        valid: result.valid,
-        message: result.valid ? undefined : result.message,
-      });
-      if (!result.valid) return;
-    }
+      if (validate) {
+        dispatch({ type: "SetValidating", row, col });
+        const result = await validate(currentValue as TValue, { row, col });
+        dispatch({
+          type: "SetValidationResult",
+          row,
+          col,
+          valid: result.valid,
+          message: result.valid ? undefined : result.message,
+        });
+        if (!result.valid) return;
+      }
 
-    dispatch({ type: "CommitEdit" });
+      dispatch({ type: "CommitEdit" });
 
-    if (currentValue !== initialValue && onCommit) {
-      // Fire-and-forget: optimistic — editor is already closed.
-      void onCommit({
-        row,
-        col,
-        previousValue: initialValue as TValue,
-        newValue: currentValue as TValue,
-      });
+      if (currentValue !== initialValue && onCommit) {
+        // Fire-and-forget: optimistic — editor is already closed.
+        // Cast is safe: currentValue/initialValue originate from getValue(): TValue
+        // and setEditValue(value: TValue). Core stores them as `unknown`.
+        void onCommit({
+          row,
+          col,
+          previousValue: initialValue as TValue,
+          newValue: currentValue as TValue,
+        });
+      }
+    } finally {
+      committingRef.current = false;
     }
   }, []); // stable — no deps, uses refs
 
@@ -215,6 +226,7 @@ export const useEditing = <TValue = unknown>(
 
   return {
     editingState: state,
+    // Cast is safe: value flows through getValue(): TValue → dispatch → state as unknown.
     editValue: state.activeEdit?.currentValue as TValue | undefined,
     startEdit,
     setEditValue,

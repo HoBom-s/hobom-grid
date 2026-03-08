@@ -41,6 +41,9 @@ jobs:
       - name: Knip
         run: pnpm ci:knip
 
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Test
         run: pnpm ci:test
 

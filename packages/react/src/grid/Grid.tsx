@@ -237,6 +237,15 @@ export const Grid = ({
           const isFocused =
             interactionState.focusCell?.row === cell.rowIndex &&
             interactionState.focusCell?.col === cell.colIndex;
+          const isSelected =
+            isFocused ||
+            interactionState.selection.ranges.some(
+              (range) =>
+                cell.rowIndex >= range.start.row &&
+                cell.rowIndex <= range.end.row &&
+                cell.colIndex >= range.start.col &&
+                cell.colIndex <= range.end.col,
+            );
 
           return (
             <div
@@ -244,7 +253,7 @@ export const Grid = ({
               role={isHeader ? "columnheader" : "gridcell"}
               aria-rowindex={cell.rowIndex + 1}
               aria-colindex={cell.colIndex + 1}
-              aria-selected={isFocused || undefined}
+              aria-selected={isSelected || undefined}
               style={{
                 position: "absolute",
                 transform: `translate(${cell.x}px, ${cell.y}px)`,

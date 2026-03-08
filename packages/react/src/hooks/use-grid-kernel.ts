@@ -17,7 +17,27 @@ type UseGridKernelSpec = Readonly<{
 
 export type UseGridKernelResult = ReturnType<typeof useGridKernel>;
 
+/** Shallow-compare two optional Record<number, number> values. */
+const shallowEqualRecord = (
+  a: Readonly<Record<number, number>> | undefined,
+  b: Readonly<Record<number, number>> | undefined,
+): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((k) => (a as Record<string, number>)[k] === (b as Record<string, number>)[k]);
+};
+
 export const useGridKernel = (spec: UseGridKernelSpec) => {
+  // Stabilize colSizes reference — callers often pass inline objects with identical content.
+  const colSizesRef = useRef(spec.colSizes);
+  if (!shallowEqualRecord(colSizesRef.current, spec.colSizes)) {
+    colSizesRef.current = spec.colSizes;
+  }
+  const stableColSizes = colSizesRef.current;
+
   const rowAxis: MeasuredAxis = useMemo(
     () =>
       createMeasuredAxis({
@@ -35,10 +55,10 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
         kind: "col",
         count: spec.colCount,
         estimateSizePx: spec.defaultColWidth,
-        initialMeasured: spec.colSizes,
+        initialMeasured: stableColSizes,
       }),
 
-    [spec.colCount, spec.defaultColWidth, spec.colSizes],
+    [spec.colCount, spec.defaultColWidth, stableColSizes],
   );
 
   const kernel = useMemo(

@@ -19,8 +19,14 @@ type GridKernel = Readonly<{
    * Main entrypoint:
    * - compute viewport slices and transforms
    * - build flat render model (cells[])
+   *
+   * Pass `anchor` (from a previous `reportMeasuredSize`) to stabilize scroll position
+   * after a measurement update.
    */
-  queryViewport(query: ViewportQuery): Readonly<{
+  queryViewport(
+    query: ViewportQuery,
+    opts?: Readonly<{ anchor?: Anchor }>,
+  ): Readonly<{
     viewport: ViewportModel;
     viewModel: ViewModel;
   }>;
@@ -30,6 +36,9 @@ type GridKernel = Readonly<{
    * - apply measured size
    * - compute scroll adjustment to prevent jump
    * - return nextQuery to be used by the adapter
+   *
+   * When `changed` is true, pass the returned `anchor` to the next `queryViewport`
+   * call for scroll stabilization.
    */
   reportMeasuredSize(
     report: MeasureReport,
@@ -37,6 +46,7 @@ type GridKernel = Readonly<{
   ): Readonly<{
     changed: boolean;
     nextQuery: ViewportQuery;
+    anchor?: Anchor;
   }>;
 }>;
 
@@ -120,26 +130,17 @@ export const createGridKernel = (spec: GridKernelSpec): GridKernel => {
 
   const builder = createViewModelBuilder({ rows, cols });
 
-  /**
-   * One-shot preferred anchor:
-   * - Set during `reportMeasuredSize`
-   * - Applied during the next `queryViewport`
-   * This prevents the “anchor identity changes” issue you just hit in tests.
-   */
-  let preferredAnchor: Anchor | null = null;
-
-  const queryViewport = (query: ViewportQuery) => {
+  const queryViewport = (query: ViewportQuery, opts?: Readonly<{ anchor?: Anchor }>) => {
     let viewport = viewportEngine.compute(query);
 
-    // Stabilization hook:
-    // apply the previous anchor identity once, so consumers see continuity.
-    if (preferredAnchor) {
+    // Stabilization: apply the caller-provided anchor identity so consumers see continuity
+    // after a measurement update.
+    const anchor = opts?.anchor;
+    if (anchor) {
       viewport = {
         ...viewport,
-        anchor: computeAnchorCoords(viewport, rows, cols, preferredAnchor),
+        anchor: computeAnchorCoords(viewport, rows, cols, anchor),
       };
-      // one-shot hint: clear after applying once
-      preferredAnchor = null;
     }
 
     const viewModel = builder.build(viewport);
@@ -159,10 +160,7 @@ export const createGridKernel = (spec: GridKernelSpec): GridKernel => {
 
     if (!changed) return { changed: false, nextQuery: currentQuery };
 
-    // 3) ensure next query maintains same anchor identity (one cycle)
-    preferredAnchor = anchor;
-
-    // 4) compute scroll adjustments per axis
+    // 3) compute scroll adjustments per axis
     const nextScrollTop =
       report.axis === "row"
         ? rows.computeAnchorAdjust({
@@ -184,6 +182,7 @@ export const createGridKernel = (spec: GridKernelSpec): GridKernel => {
     return {
       changed: true,
       nextQuery: { ...currentQuery, scrollLeftPx: nextScrollLeft, scrollTopPx: nextScrollTop },
+      anchor,
     };
   };
 

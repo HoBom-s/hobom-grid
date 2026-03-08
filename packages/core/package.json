@@ -1,6 +1,24 @@
 {
   "name": "@hobom-grid/core",
   "version": "0.1.0",
+  "description": "Headless, framework-agnostic data grid engine — virtualization, interaction, editing",
+  "license": "MIT",
+  "author": "HoBom (https://github.com/HoBom-s)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HoBom-s/hobom-grid.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/HoBom-s/hobom-grid#readme",
+  "bugs": "https://github.com/HoBom-s/hobom-grid/issues",
+  "keywords": [
+    "grid",
+    "datagrid",
+    "headless",
+    "virtualization",
+    "table",
+    "spreadsheet"
+  ],
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

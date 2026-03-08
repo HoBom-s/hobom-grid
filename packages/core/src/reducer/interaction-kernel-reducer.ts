@@ -8,6 +8,18 @@ import {
 import type { InteractionAction } from "../contracts/interaction-action";
 import type { GridCellRef, HitTarget } from "../contracts/hit-test-model";
 
+/** Structural equality for HitTarget (referential check is useless since callers create fresh objects). */
+const isHitEqual = (a: HitTarget | null | undefined, b: HitTarget | null | undefined): boolean => {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  return (
+    a.region === b.region &&
+    a.col === b.col &&
+    a.row === b.row &&
+    isCellEqual(a.cell ?? null, b.cell ?? null)
+  );
+};
+
 type InteractionKernelReducer = (
   state: InteractionKernelState,
   action: InteractionAction,
@@ -88,6 +100,8 @@ const moveCell = (
   dir: "up" | "down" | "left" | "right",
   bounds: { rowCount: number; colCount: number },
 ): GridCellRef => {
+  if (bounds.rowCount <= 0 || bounds.colCount <= 0) return cell;
+
   const r = cell.row;
   const c = cell.col;
   const next =
@@ -299,7 +313,7 @@ export const createInteractionKernelReducer = (
   return (state, action) => {
     switch (action.type) {
       case "PointerMoved": {
-        if (state.hover === action.hit) return state; // referential, fast-path
+        if (isHitEqual(state.hover, action.hit)) return state;
         return { ...state, hover: action.hit };
       }
 

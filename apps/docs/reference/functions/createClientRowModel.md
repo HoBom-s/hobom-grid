@@ -1,6 +1,6 @@
 [**@hobom-grid/core**](../README.md)
 
-***
+---
 
 [@hobom-grid/core](../README.md) / createClientRowModel
 
@@ -37,10 +37,10 @@ const model = createClientRowModel({
   rows: data,
   getId: (row) => row.id,
   filter: (row) => row.active,
-  sort: [{ key: 'name', direction: 'asc' }],
+  sort: [{ key: "name", direction: "asc" }],
 });
 
-model.rowCount     // filtered + sorted count
-model.getRow(0)    // first visible row
-model.getRowId(0)  // stable ID of first visible row
+model.rowCount; // filtered + sorted count
+model.getRow(0); // first visible row
+model.getRowId(0); // stable ID of first visible row
 ```

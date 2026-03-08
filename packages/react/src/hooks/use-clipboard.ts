@@ -11,8 +11,14 @@ export type UseClipboardOpts<TValue = unknown> = Readonly<{
   /**
    * Called after a successful paste.
    * `changes` contains one entry per pasted cell; the caller applies them to its data model.
+   * If `rowCount` / `colCount` are provided, out-of-bounds cells are excluded automatically.
    */
   onPaste?: (changes: ReadonlyArray<Readonly<{ row: number; col: number; value: string }>>) => void;
+
+  /** Total row count (including headers). Used to filter out-of-bounds paste targets. */
+  rowCount?: number;
+  /** Total column count. Used to filter out-of-bounds paste targets. */
+  colCount?: number;
 }>;
 
 export type UseClipboardResult = Readonly<{
@@ -79,16 +85,21 @@ export const useClipboard = <TValue = unknown>(
       return; // Clipboard access denied
     }
 
+    const { rowCount, colCount } = optsRef.current;
     const rows = text.split("\n").map((row) => row.split("\t"));
     const changes: Array<{ row: number; col: number; value: string }> = [];
 
     rows.forEach((rowValues, ri) => {
       rowValues.forEach((value, ci) => {
-        changes.push({ row: focusCell.row + ri, col: focusCell.col + ci, value });
+        const r = focusCell.row + ri;
+        const c = focusCell.col + ci;
+        if (rowCount != null && r >= rowCount) return;
+        if (colCount != null && c >= colCount) return;
+        changes.push({ row: r, col: c, value });
       });
     });
 
-    onPaste(changes);
+    if (changes.length > 0) onPaste(changes);
   }, []);
 
   // ── keyboard shortcut handler ─────────────────────────────────────────────
