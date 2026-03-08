@@ -160,7 +160,7 @@ export const Grid = ({
       keyboardExtensionRef.current?.onKeyDown(e);
       keyboardHandlers.onKeyDown(e); // bails if e.defaultPrevented
     },
-    [keyboardHandlers.onKeyDown],
+    [keyboardHandlers],
   );
 
   const totalWidth = Number(viewport.totalWidthPx);

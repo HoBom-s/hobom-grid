@@ -2,6 +2,17 @@
 
 ## @hobom-grid/react
 
+### 0.1.2 (2026-03-08)
+
+**Bug Fixes**
+
+- Fixed memory leak in `useColumnReorder` — window event listeners were not cleaned up if component unmounted during a drag.
+- Fixed race condition in `useEditing.commit()` — concurrent async validation could cause double-commit.
+- Fixed `colSizes` prop causing unnecessary axis re-creation on every render when passing inline objects with identical values.
+- Fixed `aria-selected` only reflecting focus cell — now correctly marks all cells within selection ranges.
+- Fixed `useClipboard` paste accepting out-of-bounds cell coordinates — added optional `rowCount`/`colCount` bounds validation.
+- Fixed lint violations: render-phase ref access, missing `useCallback` dependencies, unused eslint-disable directives.
+
 ### 0.1.1 (2026-03-08)
 
 **Bug Fixes**
@@ -33,6 +44,14 @@ Initial release.
 - `useCsvExport` — export data to CSV file
 
 ## @hobom-grid/core
+
+### 0.1.2 (2026-03-08)
+
+**Bug Fixes**
+
+- Fixed hover state triggering unnecessary re-renders — added structural equality check (`isHitEqual`) instead of referential comparison.
+- Fixed `moveCell` crashing when grid has zero rows or columns — added bounds guard.
+- Refactored mutable `preferredAnchor` closure in `createGridKernel` to explicit parameter/return, eliminating shared mutable state.
 
 ### 0.1.0 (2025-12-01)
 
