@@ -15,6 +15,8 @@ const makeInteractionState = (focusCell?: { row: number; col: number }): Interac
 
 const DATA: Record<string, Record<number, unknown>> = {
   "1,0": "Alice",
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
   "1,1": 90000,
 };
 

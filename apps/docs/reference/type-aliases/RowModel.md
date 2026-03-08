@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / RowModel
+[@hobom-grid/core](../globals.md) / RowModel
 
 # Type Alias: RowModel\<TRow\>
 

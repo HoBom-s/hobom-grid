@@ -18,6 +18,9 @@ type UseGridKernelSpec = Readonly<{
 export type UseGridKernelResult = ReturnType<typeof useGridKernel>;
 
 export const useGridKernel = (spec: UseGridKernelSpec) => {
+  // Stabilize colSizes by content — callers often pass inline objects with identical values.
+  const colSizesKey = JSON.stringify(spec.colSizes ?? null);
+
   const rowAxis: MeasuredAxis = useMemo(
     () =>
       createMeasuredAxis({
@@ -38,7 +41,8 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
         initialMeasured: spec.colSizes,
       }),
 
-    [spec.colCount, spec.defaultColWidth, spec.colSizes],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- colSizesKey is a content-based key for spec.colSizes
+    [spec.colCount, spec.defaultColWidth, colSizesKey],
   );
 
   const kernel = useMemo(

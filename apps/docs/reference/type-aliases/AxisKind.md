@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / AxisKind
+[@hobom-grid/core](../globals.md) / AxisKind
 
 # Type Alias: AxisKind
 

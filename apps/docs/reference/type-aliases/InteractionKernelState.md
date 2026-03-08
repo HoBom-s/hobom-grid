@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / InteractionKernelState
+[@hobom-grid/core](../globals.md) / InteractionKernelState
 
 # Type Alias: InteractionKernelState
 

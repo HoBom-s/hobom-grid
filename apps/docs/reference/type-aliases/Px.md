@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / Px
+[@hobom-grid/core](../globals.md) / Px
 
 # Type Alias: Px
 

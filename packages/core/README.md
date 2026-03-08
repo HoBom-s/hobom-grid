@@ -1,7 +1,3 @@
-**@hobom-grid/core**
-
-***
-
 # @hobom-grid/core
 
 Headless, framework-agnostic data grid engine.

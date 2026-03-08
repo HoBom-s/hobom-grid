@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / FilterSpec
+[@hobom-grid/core](../globals.md) / FilterSpec
 
 # Type Alias: FilterSpec()\<TRow\>
 

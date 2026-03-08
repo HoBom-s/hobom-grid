@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / createMeasuredAxis
+[@hobom-grid/core](../globals.md) / createMeasuredAxis
 
 # Function: createMeasuredAxis()
 

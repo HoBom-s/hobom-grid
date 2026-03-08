@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / createClientRowModel
+[@hobom-grid/core](../globals.md) / createClientRowModel
 
 # Function: createClientRowModel()
 

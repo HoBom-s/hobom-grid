@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / SortSpec
+[@hobom-grid/core](../globals.md) / SortSpec
 
 # Type Alias: SortSpec\<TRow\>
 

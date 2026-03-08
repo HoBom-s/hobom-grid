@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / ViewportQuery
+[@hobom-grid/core](../globals.md) / ViewportQuery
 
 # Type Alias: ViewportQuery
 

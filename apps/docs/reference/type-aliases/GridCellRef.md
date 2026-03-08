@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / GridCellRef
+[@hobom-grid/core](../globals.md) / GridCellRef
 
 # Type Alias: GridCellRef
 

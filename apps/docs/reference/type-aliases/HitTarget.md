@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / HitTarget
+[@hobom-grid/core](../globals.md) / HitTarget
 
 # Type Alias: HitTarget
 

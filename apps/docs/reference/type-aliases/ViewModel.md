@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / ViewModel
+[@hobom-grid/core](../globals.md) / ViewModel
 
 # Type Alias: ViewModel
 

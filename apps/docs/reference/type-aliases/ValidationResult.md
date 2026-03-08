@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / ValidationResult
+[@hobom-grid/core](../globals.md) / ValidationResult
 
 # Type Alias: ValidationResult
 
