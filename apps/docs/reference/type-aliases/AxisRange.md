@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / AxisRange
+[@hobom-grid/core](../globals.md) / AxisRange
 
 # Type Alias: AxisRange
 

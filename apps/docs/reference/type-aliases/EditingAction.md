@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / EditingAction
+[@hobom-grid/core](../globals.md) / EditingAction
 
 # Type Alias: EditingAction
 

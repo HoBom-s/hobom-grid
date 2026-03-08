@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / SortDirection
+[@hobom-grid/core](../globals.md) / SortDirection
 
 # Type Alias: SortDirection
 

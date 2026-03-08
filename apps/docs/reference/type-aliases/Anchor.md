@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / Anchor
+[@hobom-grid/core](../globals.md) / Anchor
 
 # Type Alias: Anchor
 

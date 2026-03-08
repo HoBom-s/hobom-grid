@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / RowId
+[@hobom-grid/core](../globals.md) / RowId
 
 # Type Alias: RowId
 

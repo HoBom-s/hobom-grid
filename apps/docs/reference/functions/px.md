@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / px
+[@hobom-grid/core](../globals.md) / px
 
 # Function: px()
 

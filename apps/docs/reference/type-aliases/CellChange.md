@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / CellChange
+[@hobom-grid/core](../globals.md) / CellChange
 
 # Type Alias: CellChange\<TValue\>
 

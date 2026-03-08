@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / ActiveEdit
+[@hobom-grid/core](../globals.md) / ActiveEdit
 
 # Type Alias: ActiveEdit
 

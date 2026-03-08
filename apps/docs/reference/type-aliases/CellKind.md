@@ -2,7 +2,7 @@
 
 ***
 
-[@hobom-grid/core](../README.md) / CellKind
+[@hobom-grid/core](../globals.md) / CellKind
 
 # Type Alias: CellKind
 
