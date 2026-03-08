@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / GridLayout
+[@hobom-grid/core](../globals.md) / GridLayout
 
 # Type Alias: GridLayout
 

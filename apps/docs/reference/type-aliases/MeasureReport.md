@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / MeasureReport
+[@hobom-grid/core](../globals.md) / MeasureReport
 
 # Type Alias: MeasureReport
 

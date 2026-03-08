@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / InteractionAction
+[@hobom-grid/core](../globals.md) / InteractionAction
 
 # Type Alias: InteractionAction
 

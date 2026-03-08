@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / editingReducer
+[@hobom-grid/core](../globals.md) / editingReducer
 
 # Function: editingReducer()
 

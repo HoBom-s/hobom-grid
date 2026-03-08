@@ -1,50 +1,71 @@
 **@hobom-grid/core**
 
----
+***
 
 # @hobom-grid/core
 
-## Type Aliases
+Headless, framework-agnostic data grid engine.
 
-- [ActiveEdit](type-aliases/ActiveEdit.md)
-- [Anchor](type-aliases/Anchor.md)
-- [AxisKind](type-aliases/AxisKind.md)
-- [AxisRange](type-aliases/AxisRange.md)
-- [CellChange](type-aliases/CellChange.md)
-- [CellKind](type-aliases/CellKind.md)
-- [CellVM](type-aliases/CellVM.md)
-- [EditingAction](type-aliases/EditingAction.md)
-- [EditingState](type-aliases/EditingState.md)
-- [FilterSpec](type-aliases/FilterSpec.md)
-- [GridCellRef](type-aliases/GridCellRef.md)
-- [GridLayout](type-aliases/GridLayout.md)
-- [HitTarget](type-aliases/HitTarget.md)
-- [InteractionAction](type-aliases/InteractionAction.md)
-- [InteractionKernelState](type-aliases/InteractionKernelState.md)
-- [MeasuredAxis](type-aliases/MeasuredAxis.md)
-- [MeasureReport](type-aliases/MeasureReport.md)
-- [ModifierKeys](type-aliases/ModifierKeys.md)
-- [Px](type-aliases/Px.md)
-- [RowId](type-aliases/RowId.md)
-- [RowModel](type-aliases/RowModel.md)
-- [SortDirection](type-aliases/SortDirection.md)
-- [SortSpec](type-aliases/SortSpec.md)
-- [ValidationResult](type-aliases/ValidationResult.md)
-- [ViewModel](type-aliases/ViewModel.md)
-- [ViewportModel](type-aliases/ViewportModel.md)
-- [ViewportQuery](type-aliases/ViewportQuery.md)
+Handles virtualization, viewport querying, interaction state, editing, and data pipeline — with zero DOM or framework dependencies.
 
-## Variables
+## Install
 
-- [defaultHitTest](variables/defaultHitTest.md)
-- [EditingKernel](variables/EditingKernel.md)
-- [InteractionKernel](variables/InteractionKernel.md)
+```bash
+npm install @hobom-grid/core
+```
 
-## Functions
+## Quick Start
 
-- [createClientRowModel](functions/createClientRowModel.md)
-- [createGridKernel](functions/createGridKernel.md)
-- [createInteractionKernelReducer](functions/createInteractionKernelReducer.md)
-- [createMeasuredAxis](functions/createMeasuredAxis.md)
-- [editingReducer](functions/editingReducer.md)
-- [px](functions/px.md)
+```ts
+import { createGridKernel, createMeasuredAxis, px } from "@hobom-grid/core";
+
+const rowAxis = createMeasuredAxis({ kind: "row", count: 10000, estimateSizePx: 32 });
+const colAxis = createMeasuredAxis({ kind: "col", count: 20, estimateSizePx: 120 });
+
+const kernel = createGridKernel({
+  rowAxis,
+  colAxis,
+  headerRowCount: 1,
+  pinnedColStartCount: 0,
+  pinnedColEndCount: 0,
+});
+
+const { viewport, viewModel } = kernel.queryViewport({
+  scrollLeftPx: px(0),
+  scrollTopPx: px(0),
+  viewportWidthPx: px(800),
+  viewportHeightPx: px(600),
+  overscan: { type: "px", value: px(150) },
+});
+
+// viewModel.cells — flat array of CellVM with viewport-space coordinates
+viewModel.cells.forEach((cell) => {
+  console.log(cell.rowIndex, cell.colIndex, cell.x, cell.y, cell.width, cell.height);
+});
+```
+
+## Key Concepts
+
+- **MeasuredAxis** — Fenwick-tree-backed variable-size virtualization primitive. O(log N) offset/index lookups.
+- **GridKernel** — Stateless function: `queryViewport(query) → { viewport, viewModel }`. No side effects.
+- **InteractionKernel** — Pure reducer for selection, focus, drag. `dispatch(action) → nextState`.
+- **ClientRowModel** — Client-side sort/filter pipeline: `createClientRowModel({ rows, sort, filter }) → RowModel`.
+- **EditingReducer** — Cell editing state machine: begin → validate → commit/cancel.
+
+## Architecture
+
+```
+MeasuredAxis (row) ─┐
+                    ├─ createGridKernel() ─ queryViewport() ─→ ViewportModel + ViewModel
+MeasuredAxis (col) ─┘
+
+InteractionKernelReducer ─ dispatch(action) ─→ InteractionKernelState
+
+createClientRowModel({ rows, sort, filter }) ─→ RowModel { rowCount, getRow, getRowId }
+
+editingReducer(state, action) ─→ EditingState
+```
+
+## License
+
+MIT

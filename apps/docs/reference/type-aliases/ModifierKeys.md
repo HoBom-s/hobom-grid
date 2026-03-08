@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / ModifierKeys
+[@hobom-grid/core](../globals.md) / ModifierKeys
 
 # Type Alias: ModifierKeys
 

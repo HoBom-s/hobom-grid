@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / EditingState
+[@hobom-grid/core](../globals.md) / EditingState
 
 # Type Alias: EditingState
 

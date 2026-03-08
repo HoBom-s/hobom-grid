@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / defaultHitTest
+[@hobom-grid/core](../globals.md) / defaultHitTest
 
 # Variable: defaultHitTest
 

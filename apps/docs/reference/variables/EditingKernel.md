@@ -1,8 +1,8 @@
 [**@hobom-grid/core**](../README.md)
 
----
+***
 
-[@hobom-grid/core](../README.md) / EditingKernel
+[@hobom-grid/core](../globals.md) / EditingKernel
 
 # Variable: EditingKernel
 
