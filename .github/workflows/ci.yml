@@ -41,6 +41,9 @@ jobs:
       - name: Knip
         run: pnpm ci:knip
 
+      - name: Build core (needed for react typecheck)
+        run: pnpm --filter @hobom-grid/core build
+
       - name: Typecheck
         run: pnpm typecheck
 
