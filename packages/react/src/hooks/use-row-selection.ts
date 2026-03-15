@@ -63,7 +63,9 @@ export const useRowSelection = <TId>(): UseRowSelectionResult<TId> => {
     setSelectedRows(new Set(allIds));
   }, []);
 
-  const clearAll = useCallback(() => setSelectedRows(new Set()), []);
+  const clearAll = useCallback(() => {
+    setSelectedRows(new Set());
+  }, []);
 
   const toggleAll = useCallback((allIds: ReadonlyArray<TId>) => {
     setSelectedRows((prev) => {

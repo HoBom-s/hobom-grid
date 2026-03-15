@@ -4,6 +4,29 @@ import { useGridKernel } from "../hooks/use-grid-kernel";
 import { useInteraction } from "../hooks/use-interaction";
 import { hitTestGrid } from "../utils/hit-test";
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+const __DEV__ =
+  typeof globalThis !== "undefined" && (globalThis as any).process?.env?.NODE_ENV !== "production";
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+
+const safeRenderCell = (
+  renderCell: (cell: CellVM, state: GridRenderState) => React.ReactNode,
+  cell: CellVM,
+  state: GridRenderState,
+): React.ReactNode => {
+  try {
+    return renderCell(cell, state);
+  } catch (err) {
+    if (__DEV__) {
+      console.error(
+        `[hobom-grid] renderCell threw for cell (${cell.rowIndex}, ${cell.colIndex}):`,
+        err,
+      );
+    }
+    return null;
+  }
+};
+
 export type GridRenderState = Readonly<{
   interactionState: InteractionKernelState;
   viewport: ViewportModel;
@@ -56,12 +79,12 @@ export type GridProps = Readonly<{
 }>;
 
 export const Grid = ({
-  rowCount,
-  colCount,
+  rowCount: rawRowCount,
+  colCount: rawColCount,
   defaultRowHeight = 32,
   defaultColWidth = 120,
   colSizes,
-  headerRowCount = 1,
+  headerRowCount: rawHeaderRowCount = 1,
   pinnedColStartCount = 0,
   pinnedColEndCount = 0,
   overscanPx = 150,
@@ -72,6 +95,17 @@ export const Grid = ({
   style,
   className,
 }: GridProps) => {
+  if (__DEV__) {
+    if (rawRowCount < 0) console.warn("[hobom-grid] rowCount is negative:", rawRowCount);
+    if (rawColCount < 0) console.warn("[hobom-grid] colCount is negative:", rawColCount);
+    if (rawHeaderRowCount < 0)
+      console.warn("[hobom-grid] headerRowCount is negative:", rawHeaderRowCount);
+  }
+
+  const rowCount = Math.max(0, rawRowCount);
+  const colCount = Math.max(0, rawColCount);
+  const headerRowCount = Math.max(0, rawHeaderRowCount);
+
   // rowCount prop = body rows only; kernel needs total (header + body).
   const totalRowCount = rowCount + headerRowCount;
 
@@ -91,12 +125,15 @@ export const Grid = ({
   // Stable refs so interaction handlers always see the latest values
   // without being recreated on every scroll
   const viewportRef = useRef(viewport);
+
   // eslint-disable-next-line react-hooks/refs
   viewportRef.current = viewport;
   const rowAxisRef = useRef(rowAxis);
+
   // eslint-disable-next-line react-hooks/refs
   rowAxisRef.current = rowAxis;
   const colAxisRef = useRef(colAxis);
+
   // eslint-disable-next-line react-hooks/refs
   colAxisRef.current = colAxis;
 
@@ -124,8 +161,9 @@ export const Grid = ({
     [interactionState, viewport],
   );
 
-  // ── Double-click → onCellDoubleClick ──────────────────────────────────────
+  // ----- Double-click → onCellDoubleClick -----
   const onCellDoubleClickRef = useRef(onCellDoubleClick);
+
   // eslint-disable-next-line react-hooks/refs
   onCellDoubleClickRef.current = onCellDoubleClick;
 
@@ -150,8 +188,9 @@ export const Grid = ({
     [headerRowCount],
   );
 
-  // ── Keyboard: extension first, then interaction ───────────────────────────
+  // ----- Keyboard: extension first, then interaction -----
   const keyboardExtensionRef = useRef(keyboardExtension);
+
   // eslint-disable-next-line react-hooks/refs
   keyboardExtensionRef.current = keyboardExtension;
 
@@ -236,7 +275,7 @@ export const Grid = ({
           const isPinned = cell.kind === "pinnedStart" || cell.kind === "pinnedEnd";
           const isFocused =
             interactionState.focusCell?.row === cell.rowIndex &&
-            interactionState.focusCell?.col === cell.colIndex;
+            interactionState.focusCell.col === cell.colIndex;
           const isSelected =
             isFocused ||
             interactionState.selection.ranges.some(
@@ -266,7 +305,7 @@ export const Grid = ({
                 zIndex: isHeader ? 2 : isPinned ? 1 : 0,
               }}
             >
-              {renderCell(cell, renderState)}
+              {safeRenderCell(renderCell, cell, renderState)}
             </div>
           );
         })}

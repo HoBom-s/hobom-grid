@@ -66,6 +66,7 @@ export const useColumnReorder = (
   const colBoundsRef = useRef<Array<{ x: number; width: number } | undefined>>([]);
 
   const onReorderRef = useRef(onReorder);
+
   // eslint-disable-next-line react-hooks/refs
   onReorderRef.current = onReorder;
 

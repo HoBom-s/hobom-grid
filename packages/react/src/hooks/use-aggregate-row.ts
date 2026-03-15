@@ -77,6 +77,7 @@ export const useAggregateRow = <TRow>(
 ): UseAggregateRowResult => {
   // Stable ref so callbacks don't recreate when columns identity changes.
   const columnsRef = useRef(columns);
+
   // eslint-disable-next-line react-hooks/refs
   columnsRef.current = columns;
 
@@ -97,6 +98,7 @@ export const useAggregateRow = <TRow>(
       const v = aggregated[key];
       if (col?.format) return col.format(v);
       if (col?.label != null && (v == null || v === 0)) return col.label;
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       return String(v ?? "");
     },
     [aggregated],

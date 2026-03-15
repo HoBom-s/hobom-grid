@@ -22,6 +22,7 @@ const defaultCompare = (a: unknown, b: unknown): number => {
   if (a == null) return -1;
   if (b == null) return 1;
   if (typeof a === "number" && typeof b === "number") return a - b;
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   return String(a).localeCompare(String(b));
 };
 
@@ -53,13 +54,13 @@ export const createClientRowModel = <TRow>(spec: ClientRowModelSpec<TRow>): RowM
   if (filter) {
     pipeline = [];
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i] as TRow;
+      const row = rows[i];
       if (filter(row, i)) pipeline.push({ originalIndex: i, row });
     }
   } else {
     pipeline = Array.from({ length: rows.length }, (_, i) => ({
       originalIndex: i,
-      row: rows[i] as TRow,
+      row: rows[i],
     }));
   }
 
@@ -77,11 +78,11 @@ export const createClientRowModel = <TRow>(spec: ClientRowModelSpec<TRow>): RowM
   }
 
   // ---- 3. Build ID index ----
-  const rowIds: RowId[] = new Array(pipeline.length);
+  const rowIds = new Array<RowId>(pipeline.length);
   const idToVirtual = new Map<RowId, number>();
 
   for (let vi = 0; vi < pipeline.length; vi++) {
-    const { row, originalIndex } = pipeline[vi]!;
+    const { row, originalIndex } = pipeline[vi];
     const id: RowId = getId ? getId(row, originalIndex) : originalIndex;
     rowIds[vi] = id;
     idToVirtual.set(id, vi);
@@ -93,7 +94,7 @@ export const createClientRowModel = <TRow>(spec: ClientRowModelSpec<TRow>): RowM
     if (virtualIndex < 0 || virtualIndex >= rowCount) {
       throw new RangeError(`RowModel.getRow: index ${virtualIndex} out of range [0, ${rowCount})`);
     }
-    return pipeline[virtualIndex]!.row;
+    return pipeline[virtualIndex].row;
   };
 
   const getRowId = (virtualIndex: number): RowId => {
@@ -102,7 +103,7 @@ export const createClientRowModel = <TRow>(spec: ClientRowModelSpec<TRow>): RowM
         `RowModel.getRowId: index ${virtualIndex} out of range [0, ${rowCount})`,
       );
     }
-    return rowIds[virtualIndex]!;
+    return rowIds[virtualIndex];
   };
 
   const findVirtualIndex = (id: RowId): number | null => {

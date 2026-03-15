@@ -164,7 +164,7 @@ describe("createClientRowModel", () => {
     it("does not mutate the original array when sorting", () => {
       const original = [...people];
       createClientRowModel({ rows: people, sort: [{ key: "name", direction: "asc" }] });
-      expect(people[0]!.name).toBe(original[0]!.name);
+      expect(people[0].name).toBe(original[0].name);
     });
   });
 });

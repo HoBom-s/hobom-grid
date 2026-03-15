@@ -75,9 +75,9 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
     if (!el) return;
 
     const ro = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const { width, height } = entry.contentRect;
+      const {
+        contentRect: { width, height },
+      } = entries[0];
       setQuery((q) => ({
         ...q,
         viewportWidthPx: px(width),
@@ -86,7 +86,9 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
     });
 
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+    };
   }, []);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {

@@ -4,6 +4,8 @@ React adapter for [`@hobom-grid/core`](https://www.npmjs.com/package/@hobom-grid
 
 Virtualized data grid component and composable hooks — handles 100k+ rows with sub-frame rendering.
 
+**[Documentation](https://hobom-s.github.io/hobom-grid/)** | [Core Engine](https://www.npmjs.com/package/@hobom-grid/core)
+
 ## Install
 
 ```bash

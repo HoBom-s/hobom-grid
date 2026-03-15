@@ -91,7 +91,7 @@ export const useEditing = <TValue = unknown>(
   // Guard against concurrent commit() calls (async validation can overlap).
   const committingRef = useRef(false);
 
-  // ── startEdit ─────────────────────────────────────────────────────────────
+  // ----- startEdit -----
 
   const startEdit = useCallback((row: number, col: number) => {
     const { isEditable, getValue } = optsRef.current;
@@ -100,13 +100,13 @@ export const useEditing = <TValue = unknown>(
     dispatch({ type: "StartEdit", row, col, initialValue });
   }, []);
 
-  // ── setEditValue ──────────────────────────────────────────────────────────
+  // ----- setEditValue -----
 
   const setEditValue = useCallback((value: TValue) => {
     dispatch({ type: "UpdateEditValue", value });
   }, []);
 
-  // ── commit ────────────────────────────────────────────────────────────────
+  // ----- commit -----
   // Stable — uses refs for current state/opts.
 
   const commit = useCallback(async () => {
@@ -150,13 +150,13 @@ export const useEditing = <TValue = unknown>(
     }
   }, []); // stable — no deps, uses refs
 
-  // ── cancel ────────────────────────────────────────────────────────────────
+  // ----- cancel -----
 
   const cancel = useCallback(() => {
     dispatch({ type: "CancelEdit" });
   }, []);
 
-  // ── isEditing ─────────────────────────────────────────────────────────────
+  // ----- isEditing -----
 
   const isEditing = useCallback(
     (row: number, col: number) => {
@@ -166,7 +166,7 @@ export const useEditing = <TValue = unknown>(
     [state.activeEdit],
   );
 
-  // ── keyboard extension ────────────────────────────────────────────────────
+  // ----- keyboard extension -----
   // Stable ref to commit so the handler never goes stale.
   const commitRef = useRef(commit);
   commitRef.current = commit;
@@ -213,7 +213,7 @@ export const useEditing = <TValue = unknown>(
     [cancel, startEdit],
   ); // cancel and startEdit are stable (no deps)
 
-  // ── gridExtension ─────────────────────────────────────────────────────────
+  // ----- gridExtension -----
   // Memoised so Grid doesn't re-render when unrelated state changes.
   const gridExtension = useMemo(
     () => ({

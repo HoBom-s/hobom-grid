@@ -40,7 +40,7 @@ export const useColumnResize = (
 
   // Ref so startResize closure always reads the latest widths without re-creating.
   const colWidthsRef = useRef(colWidths);
-  // eslint-disable-next-line react-hooks/refs
+
   colWidthsRef.current = colWidths;
 
   const startResize = useCallback(
@@ -69,9 +69,8 @@ export const useColumnResize = (
 
   const resetWidth = useCallback((origColIdx: number) => {
     setColWidths((prev) => {
-      const next = { ...prev };
-      delete next[origColIdx];
-      return next;
+      const { [origColIdx]: _, ...rest } = prev;
+      return rest;
     });
   }, []);
 

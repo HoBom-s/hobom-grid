@@ -56,6 +56,7 @@ const escapeCsv = (s: string): string => {
  */
 export const useCsvExport = <TRow>(opts: UseCsvExportOpts<TRow>): UseCsvExportResult<TRow> => {
   const optsRef = useRef(opts);
+
   // eslint-disable-next-line react-hooks/refs
   optsRef.current = opts;
 
@@ -71,6 +72,7 @@ export const useCsvExport = <TRow>(opts: UseCsvExportOpts<TRow>): UseCsvExportRe
     for (const row of rows) {
       const cells = columns.map((c) => {
         const v = c.getValue(row);
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         const s = c.formatValue ? c.formatValue(v) : String(v ?? "");
         return escapeCsv(s);
       });
