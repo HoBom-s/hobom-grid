@@ -8,7 +8,7 @@
 
 > **createClientRowModel**\<`TRow`\>(`spec`): [`RowModel`](../type-aliases/RowModel.md)\<`TRow`\>
 
-Defined in: [row-model/client-row-model.ts:45](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/row-model/client-row-model.ts#L45)
+Defined in: [row-model/client-row-model.ts:46](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/row-model/client-row-model.ts#L46)
 
 Build a client-side RowModel from an in-memory array.
 

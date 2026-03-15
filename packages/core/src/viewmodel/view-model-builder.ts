@@ -37,6 +37,12 @@ export const createViewModelBuilder = (spec: ViewModelBuilderSpec) => {
     const scrollLeft = Number(vp.scrollLeftPx);
     const scrollTop = Number(vp.scrollTopPx);
 
+    // Counters for O(1) stats (avoid 4× filter passes over cells array)
+    let bodyCellCount = 0;
+    let headerCellCount = 0;
+    let pinnedStartCellCount = 0;
+    let pinnedEndCellCount = 0;
+
     /**
      * Push a single renderable cell.
      * width/height are resolved from axes (variable sizes supported).
@@ -59,80 +65,95 @@ export const createViewModelBuilder = (spec: ViewModelBuilderSpec) => {
         width: px(width),
         height: px(height),
       });
+      switch (kind) {
+        case "body":
+          bodyCellCount++;
+          break;
+        case "header":
+          headerCellCount++;
+          break;
+        case "pinnedStart":
+        case "cornerStart":
+          pinnedStartCellCount++;
+          break;
+        case "pinnedEnd":
+        case "cornerEnd":
+          pinnedEndCellCount++;
+          break;
+      }
     };
 
-    // ---------------------------
-    // Header rows (sticky)
-    // - Y is not affected by scrollTop
-    // - X depends on region:
-    //    pinned start: fixed
-    //    main: translated by scrollLeft
-    //    pinned end: fixed on right
-    // ---------------------------
     const iter = (r: { start: number; end: number }, fn: (i: number) => void) => {
       if (r.end < r.start) return;
       for (let i = r.start; i <= r.end; i++) fn(i);
     };
 
-    // header (sticky)
+    // ---------------------------
+    // Pre-compute column X positions once per build.
+    // Eliminates redundant Fenwick queries from per-row inner loops.
+    // Savings: ~(headerRows + bodyRows) * totalCols Fenwick queries.
+    // ---------------------------
+    const colStartCount = colStart.end >= colStart.start ? colStart.end - colStart.start + 1 : 0;
+    const colMainCount = colMain.end >= colMain.start ? colMain.end - colMain.start + 1 : 0;
+    const colEndCount = colEnd.end >= colEnd.start ? colEnd.end - colEnd.start + 1 : 0;
+
+    const colStartXs = new Float64Array(colStartCount);
+    for (let i = 0; i < colStartCount; i++) {
+      colStartXs[i] = colPinnedStartX + Number(cols.getOffsetPx(colStart.start + i));
+    }
+
+    const colMainXs = new Float64Array(colMainCount);
+    for (let i = 0; i < colMainCount; i++) {
+      colMainXs[i] = colMainX + Number(cols.getOffsetPx(colMain.start + i)) - scrollLeft;
+    }
+
+    const colEndBase = colEndCount > 0 ? Number(cols.getOffsetPx(colEnd.start)) : 0;
+    const colEndXs = new Float64Array(colEndCount);
+    for (let i = 0; i < colEndCount; i++) {
+      colEndXs[i] = colPinnedEndX + Number(cols.getOffsetPx(colEnd.start + i)) - colEndBase;
+    }
+
+    // ---------------------------
+    // Header rows (sticky) — Y not affected by scrollTop
+    // ---------------------------
     iter(headerRows, (ri) => {
       const rowOffset = Number(rows.getOffsetPx(ri));
       const y = rowHeaderY + rowOffset;
 
       iter(colStart, (ci) => {
-        const x = colPinnedStartX + Number(cols.getOffsetPx(ci));
-        pushCell(ri, ci, "cornerStart", x, y);
+        pushCell(ri, ci, "cornerStart", colStartXs[ci - colStart.start], y);
       });
-
       iter(colMain, (ci) => {
-        const x = colMainX + (Number(cols.getOffsetPx(ci)) - scrollLeft);
-        pushCell(ri, ci, "header", x, y);
+        pushCell(ri, ci, "header", colMainXs[ci - colMain.start], y);
       });
-
       iter(colEnd, (ci) => {
-        const x =
-          colPinnedEndX + (Number(cols.getOffsetPx(ci)) - Number(cols.getOffsetPx(colEnd.start)));
-        pushCell(ri, ci, "cornerEnd", x, y);
+        pushCell(ri, ci, "cornerEnd", colEndXs[ci - colEnd.start], y);
       });
     });
 
     // ---------------------------
-    // Body rows
-    // - Y: rowOffset - scrollTop
-    //   (rowBodyY = headerHeight cancels with the header offset baked into rowOffset,
-    //    so the net formula is simply content_offset - scroll)
-    // - X rules are the same as above
+    // Body rows — Y: rowOffset - scrollTop
     // ---------------------------
     iter(bodyRows, (ri) => {
       const rowOffset = Number(rows.getOffsetPx(ri));
       const y = rowOffset - scrollTop;
 
       iter(colStart, (ci) => {
-        const x = colPinnedStartX + Number(cols.getOffsetPx(ci));
-        pushCell(ri, ci, "pinnedStart", x, y);
+        pushCell(ri, ci, "pinnedStart", colStartXs[ci - colStart.start], y);
       });
-
       iter(colMain, (ci) => {
-        const x = colMainX + (Number(cols.getOffsetPx(ci)) - scrollLeft);
-        pushCell(ri, ci, "body", x, y);
+        pushCell(ri, ci, "body", colMainXs[ci - colMain.start], y);
       });
-
       iter(colEnd, (ci) => {
-        const x =
-          colPinnedEndX + (Number(cols.getOffsetPx(ci)) - Number(cols.getOffsetPx(colEnd.start)));
-        pushCell(ri, ci, "pinnedEnd", x, y);
+        pushCell(ri, ci, "pinnedEnd", colEndXs[ci - colEnd.start], y);
       });
     });
 
-    // stats are useful for perf monitoring + testing
     const stats = {
-      bodyCellCount: cells.filter((c) => c.kind === "body").length,
-      headerCellCount: cells.filter((c) => c.kind === "header").length,
-      pinnedStartCellCount: cells.filter(
-        (c) => c.kind === "pinnedStart" || c.kind === "cornerStart",
-      ).length,
-      pinnedEndCellCount: cells.filter((c) => c.kind === "pinnedEnd" || c.kind === "cornerEnd")
-        .length,
+      bodyCellCount,
+      headerCellCount,
+      pinnedStartCellCount,
+      pinnedEndCellCount,
     };
 
     return { cells, stats };

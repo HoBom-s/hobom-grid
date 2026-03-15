@@ -14,6 +14,8 @@ module.exports = [
       "**/coverage/**",
       "**/reference/**",
       "**/tsup.config.ts",
+      "**/vitest.config.ts",
+      "apps/docs/.vitepress/**",
       "configs/tsup/**",
     ],
   },

@@ -51,17 +51,44 @@ pnpm dev:examples   # http://localhost:3000
 
 ## Commands
 
-| Command             | Description                       |
-| ------------------- | --------------------------------- |
-| `pnpm install`      | Install dependencies              |
-| `pnpm build`        | Build all packages                |
-| `pnpm dev:examples` | Run example app (port 3000)       |
-| `pnpm test`         | Run all tests                     |
-| `pnpm coverage`     | Run tests with coverage report    |
-| `pnpm lint`         | Lint all packages                 |
-| `pnpm typecheck`    | Type-check all packages           |
-| `pnpm docs:build`   | Build documentation site          |
-| `pnpm docs:api`     | Generate API reference from types |
+| Command             | Description                            |
+| ------------------- | -------------------------------------- |
+| `pnpm install`      | Install dependencies                   |
+| `pnpm build`        | Build all packages                     |
+| `pnpm dev:examples` | Run example app (port 3000)            |
+| `pnpm test`         | Run all tests                          |
+| `pnpm coverage`     | Run tests with coverage report         |
+| `pnpm lint`         | Lint all packages                      |
+| `pnpm typecheck`    | Type-check all packages                |
+| `pnpm docs:build`   | Build documentation site               |
+| `pnpm docs:api`     | Generate API reference from types      |
+| `pnpm bench:core`   | Run performance benchmarks (ops/sec)   |
+| `pnpm coverage`     | Run tests with coverage threshold gate |
+
+<br />
+
+## Performance
+
+hobom-grid is built for performance. The core engine uses Fenwick tree (BIT) based O(log N)
+virtualization with anchor-based scroll stabilization.
+
+### Complexity Guarantees
+
+| Operation                | Complexity | 1M rows bench  |
+| ------------------------ | ---------- | -------------- |
+| Fenwick add / prefix sum | O(log N)   | ~20M ops/sec   |
+| Offset lookup            | O(log N)   | ~17M ops/sec   |
+| Visible segment query    | O(log N)   | ~2.2M ops/sec  |
+| Viewport compute         | O(log N)   | ~1M ops/sec    |
+| Row lookup / ID reverse  | O(1)       | ~7-42M ops/sec |
+
+### Automated Regression Detection
+
+Every PR is automatically tested for complexity regressions via ratio-based scaling tests:
+
+- Same operation at N=10K and N=1M, median time ratio must stay within threshold
+- O(log N) ops: ratio < 5, O(1) ops: ratio < 8
+- If someone accidentally degrades O(log N) to O(N), the ratio jumps to ~100 and CI fails
 
 <br />
 

@@ -53,3 +53,39 @@ export type { ContextMenuProps } from "./components/ContextMenu";
 
 export { useCsvExport } from "./hooks/use-csv-export";
 export type { UseCsvExportOpts, UseCsvExportResult, CsvColumnDef } from "./hooks/use-csv-export";
+
+// Pagination
+export { usePagination } from "./hooks/use-pagination";
+export type { UsePaginationOpts, UsePaginationResult } from "./hooks/use-pagination";
+
+// Filter UI
+export { useFilterUI } from "./hooks/use-filter-ui";
+export type { UseFilterUIResult, PopoverState } from "./hooks/use-filter-ui";
+
+export { FilterPopover } from "./components/FilterPopover";
+export type { FilterPopoverProps } from "./components/FilterPopover";
+
+// State persistence
+export { useGridStatePersistence, localStorageAdapter } from "./hooks/use-grid-state-persistence";
+export type {
+  StorageAdapter,
+  PersistedGridState,
+  UseGridStatePersistenceOpts,
+  UseGridStatePersistenceResult,
+} from "./hooks/use-grid-state-persistence";
+
+// Column bands
+export { useColumnBands } from "./hooks/use-column-bands";
+export type { ColumnBandDef, BandCellInfo, UseColumnBandsResult } from "./hooks/use-column-bands";
+
+// Grouping
+export { useGrouping } from "./hooks/use-grouping";
+export type { UseGroupingOpts, UseGroupingResult } from "./hooks/use-grouping";
+
+// Tree grid
+export { useTreeGrid } from "./hooks/use-tree-grid";
+export type { UseTreeGridResult } from "./hooks/use-tree-grid";
+
+// Server-side row model
+export { useServerRowModel } from "./hooks/use-server-row-model";
+export type { UseServerRowModelOpts, UseServerRowModelResult } from "./hooks/use-server-row-model";

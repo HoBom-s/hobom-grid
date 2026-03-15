@@ -11,14 +11,29 @@ import {
   useContextMenu,
   ContextMenu,
   useCsvExport,
+  usePagination,
+  useFilterUI,
+  FilterPopover,
+  useColumnBands,
+  useGrouping,
+  useTreeGrid,
+  useServerRowModel,
+  useGridStatePersistence,
 } from "@hobom-grid/react";
-import type { ContextMenuItem } from "@hobom-grid/react";
-import type { SortSpec } from "@hobom-grid/core";
-import type { CellVM, InteractionKernelState } from "@hobom-grid/core";
+import type { ColumnBandDef, ContextMenuItem } from "@hobom-grid/react";
+import type {
+  SortSpec,
+  CellVM,
+  InteractionKernelState,
+  FilterColumnDef,
+  ColumnFilterState,
+  FlatTreeRow,
+  TreeNode,
+} from "@hobom-grid/core";
 
-// ---------------------------------------------------------------------------
-// Data model
-// ---------------------------------------------------------------------------
+// ============================================================================
+// Shared data model
+// ============================================================================
 
 type Employee = {
   id: number;
@@ -46,9 +61,9 @@ const generateData = (count: number): Employee[] =>
 
 const BASE_DATA = generateData(100_000);
 
-// ---------------------------------------------------------------------------
+// ============================================================================
 // Column definitions
-// ---------------------------------------------------------------------------
+// ============================================================================
 
 type ColKey = keyof Employee;
 
@@ -98,9 +113,19 @@ const COLUMNS: ColDef[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// JSX cell renderers
-// ---------------------------------------------------------------------------
+// ============================================================================
+// Shared styles + helpers
+// ============================================================================
+
+const btnStyle: React.CSSProperties = {
+  padding: "5px 10px",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  fontSize: 13,
+  cursor: "pointer",
+  background: "#fff",
+  color: "#374151",
+};
 
 const DEPT_ICON: Record<string, string> = {
   Engineering: "⚙️",
@@ -126,10 +151,6 @@ const salaryColor = (salary: number): string => {
   return "#374151";
 };
 
-// ---------------------------------------------------------------------------
-// Selection helpers
-// ---------------------------------------------------------------------------
-
 const isCellSelected = (state: InteractionKernelState, row: number, col: number): boolean => {
   for (const range of state.selection.ranges) {
     if (
@@ -148,17 +169,59 @@ const isCellFocused = (state: InteractionKernelState, row: number, col: number):
   return fc != null && fc.row === row && fc.col === col;
 };
 
-// ---------------------------------------------------------------------------
-// App
-// ---------------------------------------------------------------------------
+const bodyCellStyle = (
+  col: ColDef,
+  dataIndex: number,
+  focused: boolean,
+  selected: boolean,
+): React.CSSProperties => ({
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  alignItems: "center",
+  paddingInline: 8,
+  background: focused ? "#dbeafe" : selected ? "#eff6ff" : dataIndex % 2 !== 0 ? "#fafafa" : "#fff",
+  borderBottom: "1px solid #f3f4f6",
+  borderRight: "1px solid #f3f4f6",
+  fontSize: 13,
+  boxSizing: "border-box",
+  outline: focused ? "2px solid #3b82f6" : "none",
+  outlineOffset: "-2px",
+  cursor: col.editable ? "text" : "default",
+});
+
+const tabBtnStyle = (active: boolean): React.CSSProperties => ({
+  padding: "8px 16px",
+  border: "none",
+  borderBottom: active ? "2px solid #3b82f6" : "2px solid transparent",
+  background: "transparent",
+  fontSize: 13,
+  fontWeight: active ? 600 : 400,
+  color: active ? "#1d4ed8" : "#6b7280",
+  cursor: "pointer",
+});
+
+// ============================================================================
+// Tab 1: Full Demo (기존 기능 + Pagination + Filter UI + Column Bands + Persistence)
+// ============================================================================
 
 type SortState = { key: ColKey; direction: "asc" | "desc" } | null;
 
-function App() {
+function FullDemo() {
+  const persistence = useGridStatePersistence({ storageKey: "hobom-grid-demo" });
+
   const [filterText, setFilterText] = useState("");
-  const [sortState, setSortState] = useState<SortState>(null);
+  const [sortState, setSortState] = useState<SortState>(
+    persistence.restoredState?.sort?.[0]
+      ? {
+          key: persistence.restoredState.sort[0].key as ColKey,
+          direction: persistence.restoredState.sort[0].direction,
+        }
+      : null,
+  );
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [overrides, setOverrides] = useState<Map<number, Partial<Employee>>>(new Map());
+  const [usePaging, setUsePaging] = useState(false);
 
   const rows = useMemo<Employee[]>(
     () =>
@@ -171,43 +234,70 @@ function App() {
     [overrides],
   );
 
-  // ----- Data pipeline -----
+  // ----- Filter UI (column-level) -----
+  const filterColumnDefs = useMemo<FilterColumnDef<Employee>[]>(
+    () => [
+      { key: "name", type: "text" },
+      { key: "department", type: "select", options: DEPARTMENTS },
+      { key: "role", type: "select", options: ROLES },
+      { key: "salary", type: "range" },
+      { key: "age", type: "range" },
+    ],
+    [],
+  );
+  const filterUI = useFilterUI<Employee>(filterColumnDefs);
 
+  // ----- Data pipeline -----
   const sort = useMemo<SortSpec<Employee>[] | undefined>(
     () => (sortState ? [{ key: sortState.key, direction: sortState.direction }] : undefined),
     [sortState],
   );
 
-  const filter = useCallback(
-    (row: Employee) => {
+  const combinedFilter = useCallback(
+    (row: Employee, idx: number) => {
       if (showActiveOnly && !row.active) return false;
-      if (filterText.trim() === "") return true;
-      const q = filterText.toLowerCase();
-      return (
-        row.name.toLowerCase().includes(q) ||
-        row.department.toLowerCase().includes(q) ||
-        row.role.toLowerCase().includes(q)
-      );
+      if (filterText.trim() !== "") {
+        const q = filterText.toLowerCase();
+        if (
+          !row.name.toLowerCase().includes(q) &&
+          !row.department.toLowerCase().includes(q) &&
+          !row.role.toLowerCase().includes(q)
+        )
+          return false;
+      }
+      if (filterUI.filterSpec) return filterUI.filterSpec(row, idx);
+      return true;
     },
-    [filterText, showActiveOnly],
+    [filterText, showActiveOnly, filterUI.filterSpec],
   );
 
-  const rowModel = useClientRowModel(rows, {
+  const baseRowModel = useClientRowModel(rows, {
     getId: useCallback((r: Employee) => r.id, []),
     sort,
-    filter,
+    filter: combinedFilter,
   });
 
-  // ----- Column features (Phase 5) -----
+  // ----- Pagination -----
+  const paged = usePagination(baseRowModel, {
+    initialPageSize: persistence.restoredState?.pageSize ?? 100,
+    initialPage: persistence.restoredState?.page ?? 0,
+  });
+  const rowModel = usePaging ? paged.rowModel : baseRowModel;
 
+  // ----- Column features -----
   const initialWidths = useMemo(
     () => Object.fromEntries(COLUMNS.map((col, i) => [i, col.width])),
     [],
   );
-  const colResize = useColumnResize(initialWidths);
+  const colResize = useColumnResize(
+    persistence.restoredState?.colWidths
+      ? { ...initialWidths, ...persistence.restoredState.colWidths }
+      : initialWidths,
+  );
   const colVis = useColumnVisibility(COLUMNS.length);
-
-  const [allColOrder, setAllColOrder] = useState<number[]>(() => COLUMNS.map((_, i) => i));
+  const [allColOrder, setAllColOrder] = useState<number[]>(
+    () => persistence.restoredState?.colOrder ?? COLUMNS.map((_, i) => i),
+  );
 
   const isVisibleRef = useRef(colVis.isVisible);
   isVisibleRef.current = colVis.isVisible;
@@ -245,12 +335,34 @@ function App() {
     [visibleCols, colResize.colWidths],
   );
 
-  // ----- Column chooser UI -----
+  // ----- Column Bands -----
+  const [showBands, setShowBands] = useState(false);
+  const bandDefs = useMemo<ColumnBandDef[]>(
+    () => [
+      { label: "Personal", children: ["Name", "Age"] },
+      { label: "Work", children: ["Department", "Role"] },
+      { label: "Compensation", children: ["Salary"] },
+    ],
+    [],
+  );
+  const visibleColNames = useMemo(() => visibleCols.map((i) => COLUMNS[i].label), [visibleCols]);
+  const bands = useColumnBands(showBands ? bandDefs : undefined, colSizes, 120, visibleColNames);
 
+  // ----- Auto-save state -----
+  useEffect(() => {
+    persistence.autoSave({
+      colWidths: colResize.colWidths,
+      colOrder: allColOrder,
+      sort: sortState ? [{ key: sortState.key, direction: sortState.direction }] : undefined,
+      page: paged.currentPage,
+      pageSize: paged.pageSize,
+    });
+  }, [colResize.colWidths, allColOrder, sortState, paged.currentPage, paged.pageSize, persistence]);
+
+  // ----- Column chooser -----
   const [colChooserOpen, setColChooserOpen] = useState(false);
   const colChooserRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click.
   useEffect(() => {
     if (!colChooserOpen) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -264,11 +376,8 @@ function App() {
     };
   }, [colChooserOpen]);
 
-  // ----- Ecosystem (Phase 6) -----
-
+  // ----- Ecosystem -----
   const contextMenu = useContextMenu();
-
-  // CSV export — always reflects the current visible column order and filter.
   const csvExport = useCsvExport<Employee>({
     columns: useMemo(
       () =>
@@ -286,22 +395,21 @@ function App() {
   });
 
   // ----- Value access -----
-
   const interactionStateRef = useRef<InteractionKernelState | null>(null);
 
   const getValue = useCallback(
     (row: number, col: number): unknown => {
       const origIdx = visibleColsRef.current[col];
-      if (row === 0) return COLUMNS[origIdx].label;
-      const dataIndex = row - 1;
+      const headerRows = bands.headerRowCount;
+      if (row < headerRows) return COLUMNS[origIdx].label;
+      const dataIndex = row - headerRows;
       const employee = rowModel.getRow(dataIndex);
       return employee[COLUMNS[origIdx].key];
     },
-    [rowModel],
+    [rowModel, bands.headerRowCount],
   );
 
   // ----- Editing -----
-
   const stableInteractionState = useMemo(
     () =>
       new Proxy({} as InteractionKernelState, {
@@ -317,7 +425,7 @@ function App() {
       getValue,
       isEditable: (row, col) => {
         const origIdx = visibleColsRef.current[col];
-        return row > 0 && COLUMNS[origIdx].editable === true;
+        return row >= bands.headerRowCount && COLUMNS[origIdx].editable === true;
       },
       validate: (value, { col }) => {
         const origIdx = visibleColsRef.current[col];
@@ -334,7 +442,7 @@ function App() {
       },
       onCommit: ({ row, col, newValue }) => {
         const origIdx = visibleColsRef.current[col];
-        const dataIndex = row - 1;
+        const dataIndex = row - bands.headerRowCount;
         const employee = rowModel.getRow(dataIndex);
         const colDef = COLUMNS[origIdx];
         const parsed = colDef.parse
@@ -363,8 +471,8 @@ function App() {
       onPaste: (changes) => {
         const updates = new Map<number, Partial<Employee>>();
         for (const { row, col, value } of changes) {
-          if (row === 0) continue;
-          const dataIndex = row - 1;
+          if (row < bands.headerRowCount) continue;
+          const dataIndex = row - bands.headerRowCount;
           if (dataIndex >= rowModel.rowCount) continue;
           const employee = rowModel.getRow(dataIndex);
           const origIdx = visibleColsRef.current[col];
@@ -387,8 +495,6 @@ function App() {
     stableInteractionState,
   );
 
-  // ----- Keyboard extensions (editing + clipboard) -----
-
   const keyboardExtension = useMemo(
     () => ({
       onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -399,39 +505,61 @@ function App() {
     [editing.gridExtension.keyboardExtension.onKeyDown, clipboard.onKeyDown],
   );
 
-  // ----- Stable refs used inside renderCell closures -----
-
+  // ----- Stable refs -----
   const sortStateRef = useRef(sortState);
   sortStateRef.current = sortState;
-
   const rowModelRef = useRef(rowModel);
   rowModelRef.current = rowModel;
-
   const clipboardRef = useRef(clipboard);
   clipboardRef.current = clipboard;
-
   const colVisRef = useRef(colVis);
   colVisRef.current = colVis;
-
   const colResizeRef = useRef(colResize);
   colResizeRef.current = colResize;
 
   // ----- Cell renderer -----
-
   const renderCell = useCallback(
     (cell: CellVM, { interactionState }: { interactionState: InteractionKernelState }) => {
       interactionStateRef.current = interactionState;
-
       const origIdx = visibleColsRef.current[cell.colIndex];
       const col = COLUMNS[origIdx];
-
       const isDragging = colReorder.dragState?.fromVisual === cell.colIndex;
       const isDropTarget = colReorder.dragState?.overVisual === cell.colIndex;
 
-      // ----- Header -----
+      // ----- Band header rows -----
+      if (bands.headerRowCount > 1 && cell.rowIndex < bands.headerRowCount - 1) {
+        const bandCell = bands.getBandCell(cell.rowIndex, cell.colIndex);
+        if (bandCell && bandCell.isFirst) {
+          return (
+            <div
+              style={{
+                width: bandCell.spanWidthPx,
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#e8edf3",
+                borderBottom: "1px solid #d1d5db",
+                borderRight: "1px solid #d1d5db",
+                fontWeight: 600,
+                fontSize: 12,
+                color: "#475569",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                boxSizing: "border-box",
+              }}
+            >
+              {bandCell.label}
+            </div>
+          );
+        }
+        // Non-first band cells render empty (spanned over by the first cell)
+        return null;
+      }
+
+      // ----- Column header row -----
       if (cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd") {
         colReorder.reportColBounds(cell.colIndex, cell.x, cell.width);
-
         const isSorted = sortState != null && sortState.key === col.key;
         const nextDir = isSorted && sortState.direction === "asc" ? "desc" : "asc";
 
@@ -468,6 +596,16 @@ function App() {
               disabled: ss?.key !== col.key,
               onSelect: () => {
                 setSortState(null);
+              },
+            },
+            { kind: "separator" },
+            { kind: "label", text: "Filter" },
+            {
+              kind: "action",
+              label: "Filter Column…",
+              icon: "🔍",
+              onSelect: () => {
+                filterUI.openPopover(col.key, e.clientX, e.clientY);
               },
             },
             { kind: "separator" },
@@ -523,7 +661,7 @@ function App() {
               cursor: colReorder.dragState ? "grabbing" : "grab",
               opacity: isDragging ? 0.6 : 1,
               gap: 4,
-              transition: "background 0.1s, border-color 0.1s",
+              transition: "background 0.1s",
             }}
             onPointerDown={(e) => {
               const containerLeft = e.currentTarget.getBoundingClientRect().left - cell.x;
@@ -548,8 +686,9 @@ function App() {
                 {sortState.direction === "asc" ? "▲" : "▼"}
               </span>
             )}
-
-            {/* Resize handle */}
+            {col.key in filterUI.filterState && (
+              <span style={{ fontSize: 10, color: "#3b82f6", flexShrink: 0 }}>●</span>
+            )}
             <div
               style={{
                 position: "absolute",
@@ -578,21 +717,21 @@ function App() {
       }
 
       // ----- Body -----
-      const dataIndex = cell.rowIndex - 1;
+      const dataIndex = cell.rowIndex - bands.headerRowCount;
       if (dataIndex < 0 || dataIndex >= rowModel.rowCount) return null;
 
       const row = rowModel.getRow(dataIndex);
       const selected = isCellSelected(interactionState, cell.rowIndex, cell.colIndex);
       const focused = isCellFocused(interactionState, cell.rowIndex, cell.colIndex);
-      const isEditing = editing.isEditing(cell.rowIndex, cell.colIndex);
-      const hasError = isEditing && editing.editingState.activeEdit?.validationState === "invalid";
-      const errMsg = isEditing ? editing.editingState.activeEdit?.validationMessage : undefined;
+      const isEditingCell = editing.isEditing(cell.rowIndex, cell.colIndex);
+      const hasError =
+        isEditingCell && editing.editingState.activeEdit?.validationState === "invalid";
+      const errMsg = isEditingCell ? editing.editingState.activeEdit?.validationMessage : undefined;
 
       const rawValue = row[col.key];
       const display = col.format ? col.format(rawValue) : String(rawValue);
 
-      // Edit mode
-      if (isEditing && col.editable) {
+      if (isEditingCell && col.editable) {
         return (
           <div style={{ width: "100%", height: "100%", position: "relative" }}>
             <input
@@ -637,127 +776,21 @@ function App() {
         );
       }
 
-      // Display mode
-      const cellBg = focused
-        ? "#dbeafe"
-        : selected
-          ? "#eff6ff"
-          : dataIndex % 2 !== 0
-            ? "#fafafa"
-            : "#fff";
+      const cellBase = bodyCellStyle(col, dataIndex, focused, selected);
 
-      const cellBase: React.CSSProperties = {
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        paddingInline: 8,
-        background: cellBg,
-        borderBottom: "1px solid #f3f4f6",
-        borderRight: "1px solid #f3f4f6",
-        fontSize: 13,
-        boxSizing: "border-box",
-        outline: focused ? "2px solid #3b82f6" : "none",
-        outlineOffset: "-2px",
-        cursor: col.editable ? "text" : "default",
-      };
-
-      const handleCellContextMenu = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const hasSelection =
-          interactionState.selection.ranges.length > 0 &&
-          (interactionState.selection.ranges[0].start.row !==
-            interactionState.selection.ranges[0].end.row ||
-            interactionState.selection.ranges[0].start.col !==
-              interactionState.selection.ranges[0].end.col);
-
-        const cellValue = rawValue;
-        const cellText = col.format ? col.format(cellValue) : String(cellValue);
-        const cb = clipboardRef.current;
-        const ss = sortStateRef.current;
-
-        const items: ContextMenuItem[] = [
-          { kind: "label", text: "Clipboard" },
-          {
-            kind: "action",
-            label: "Copy Cell",
-            icon: "⎘",
-            shortcut: "Ctrl+C",
-            onSelect: () => void navigator.clipboard.writeText(cellText),
-          },
-          {
-            kind: "action",
-            label: "Copy Selection",
-            icon: "⎘",
-            disabled: !hasSelection,
-            onSelect: () => {
-              cb.copy();
-            },
-          },
-          {
-            kind: "action",
-            label: "Paste",
-            icon: "⎗",
-            shortcut: "Ctrl+V",
-            onSelect: () => void cb.paste(),
-          },
-        ];
-
-        if (col.editable) {
-          items.push({ kind: "separator" });
-          items.push({
-            kind: "action",
-            label: "Edit Cell",
-            icon: "✏",
-            shortcut: "F2",
-            onSelect: () => {
-              editing.startEdit(cell.rowIndex, cell.colIndex);
-            },
-          });
-        }
-
-        if (col.sortable) {
-          items.push({ kind: "separator" });
-          items.push({ kind: "label", text: `Sort by ${col.label}` });
-          items.push({
-            kind: "action",
-            label: "Sort A → Z",
-            icon: "↑",
-            disabled: ss?.key === col.key && ss.direction === "asc",
-            onSelect: () => {
-              setSortState({ key: col.key, direction: "asc" });
-            },
-          });
-          items.push({
-            kind: "action",
-            label: "Sort Z → A",
-            icon: "↓",
-            disabled: ss?.key === col.key && ss.direction === "desc",
-            onSelect: () => {
-              setSortState({ key: col.key, direction: "desc" });
-            },
-          });
-        }
-
-        contextMenu.openMenu(e.clientX, e.clientY, items);
-      };
-
-      // Department — emoji icon prefix
       if (col.key === "department") {
         const icon = DEPT_ICON[row.department] ?? "🏢";
         return (
-          <div style={{ ...cellBase, gap: 6 }} onContextMenu={handleCellContextMenu}>
+          <div style={{ ...cellBase, gap: 6 }}>
             <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
             <span style={{ color: "#111827" }}>{row.department}</span>
           </div>
         );
       }
-
-      // Role — colored badge chip
       if (col.key === "role") {
         const roleStyle = ROLE_STYLE[row.role] ?? {};
         return (
-          <div style={{ ...cellBase }} onContextMenu={handleCellContextMenu}>
+          <div style={cellBase}>
             <span
               style={{
                 ...roleStyle,
@@ -773,8 +806,6 @@ function App() {
           </div>
         );
       }
-
-      // Salary — color-coded text + mini bar
       if (col.key === "salary") {
         const pct = Math.round(((row.salary - 40_000) / 120_000) * 100);
         return (
@@ -786,7 +817,6 @@ function App() {
               gap: 2,
               paddingBlock: 4,
             }}
-            onContextMenu={handleCellContextMenu}
           >
             <span style={{ color: salaryColor(row.salary), fontWeight: 500, fontSize: 12 }}>
               ${row.salary.toLocaleString()}
@@ -804,14 +834,9 @@ function App() {
           </div>
         );
       }
-
-      // Active — clickable toggle pill
       if (col.key === "active") {
         return (
-          <div
-            style={{ ...cellBase, justifyContent: "center" }}
-            onContextMenu={handleCellContextMenu}
-          >
+          <div style={{ ...cellBase, justifyContent: "center" }}>
             <button
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -840,7 +865,6 @@ function App() {
         );
       }
 
-      // Default — plain text (id, name, age)
       return (
         <div
           style={{
@@ -848,32 +872,180 @@ function App() {
             justifyContent: col.align === "right" ? "flex-end" : "flex-start",
             color: "#111827",
           }}
-          onContextMenu={handleCellContextMenu}
         >
           {display}
         </div>
       );
     },
-    [rowModel, sortState, editing, setOverrides, colReorder, colResize, contextMenu.openMenu],
+    [
+      rowModel,
+      sortState,
+      editing,
+      setOverrides,
+      colReorder,
+      colResize,
+      contextMenu.openMenu,
+      bands,
+      filterUI,
+    ],
   );
-
-  // ----- Export CSV handler -----
 
   const handleExportCsv = useCallback(() => {
     const exportRows = Array.from({ length: rowModel.rowCount }, (_, i) => rowModel.getRow(i));
     csvExport.exportCsv(exportRows, "employees.csv");
   }, [rowModel, csvExport]);
 
+  // ----- Filter popover content -----
+  const renderFilterPopoverContent = () => {
+    if (!filterUI.popover) return null;
+    const colKey = filterUI.popover.columnKey;
+    const def = filterColumnDefs.find((d) => d.key === colKey);
+    if (!def) return null;
+    const currentState = (filterUI.filterState as Partial<Record<string, ColumnFilterState>>)[
+      colKey
+    ];
+
+    if (def.type === "text") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+            Filter: {colKey}
+          </label>
+          <input
+            autoFocus
+            placeholder="Type to filter…"
+            defaultValue={currentState ? String(currentState.value) : ""}
+            onChange={(e) => {
+              if (e.target.value) filterUI.setFilter(colKey, e.target.value);
+              else filterUI.clearFilter(colKey);
+            }}
+            style={{
+              padding: "4px 8px",
+              border: "1px solid #d1d5db",
+              borderRadius: 4,
+              fontSize: 13,
+            }}
+          />
+          <button
+            onClick={() => {
+              filterUI.clearFilter(colKey);
+              filterUI.closePopover();
+            }}
+            style={{ ...btnStyle, fontSize: 12 }}
+          >
+            Clear
+          </button>
+        </div>
+      );
+    }
+
+    if (def.type === "select" && def.options) {
+      const selected = currentState ? (currentState.value as string[]) : [];
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+            Filter: {colKey}
+          </label>
+          {def.options.map((opt) => (
+            <label
+              key={opt}
+              style={{
+                fontSize: 13,
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(opt)}
+                onChange={() => {
+                  const next = selected.includes(opt)
+                    ? selected.filter((s) => s !== opt)
+                    : [...selected, opt];
+                  if (next.length > 0) filterUI.setFilter(colKey, next);
+                  else filterUI.clearFilter(colKey);
+                }}
+              />
+              {opt}
+            </label>
+          ))}
+          <button
+            onClick={() => {
+              filterUI.clearFilter(colKey);
+              filterUI.closePopover();
+            }}
+            style={{ ...btnStyle, fontSize: 12 }}
+          >
+            Clear
+          </button>
+        </div>
+      );
+    }
+
+    if (def.type === "range") {
+      const [min, max] = currentState
+        ? (currentState.value as [number | null, number | null])
+        : [null, null];
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+            Filter: {colKey}
+          </label>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input
+              type="number"
+              placeholder="Min"
+              defaultValue={min ?? ""}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : null;
+                filterUI.setFilter(colKey, [v, max]);
+              }}
+              style={{
+                width: 80,
+                padding: "4px 6px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 13,
+              }}
+            />
+            <span>–</span>
+            <input
+              type="number"
+              placeholder="Max"
+              defaultValue={max ?? ""}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : null;
+                filterUI.setFilter(colKey, [min, v]);
+              }}
+              style={{
+                width: 80,
+                padding: "4px 6px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 13,
+              }}
+            />
+          </div>
+          <button
+            onClick={() => {
+              filterUI.clearFilter(colKey);
+              filterUI.closePopover();
+            }}
+            style={{ ...btnStyle, fontSize: 12 }}
+          >
+            Clear
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        fontFamily: "system-ui, sans-serif",
-        background: "#f9fafb",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       {/* Toolbar */}
       <header
         style={{
@@ -882,16 +1054,14 @@ function App() {
           borderBottom: "1px solid #e5e7eb",
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          gap: 10,
           flexShrink: 0,
           flexWrap: "wrap",
         }}
       >
-        <strong style={{ fontSize: 15, marginRight: 4 }}>hobom-grid</strong>
-
         <input
           type="text"
-          placeholder="Filter by name / department / role…"
+          placeholder="Search name / dept / role…"
           value={filterText}
           onChange={(e) => {
             setFilterText(e.target.value);
@@ -901,11 +1071,10 @@ function App() {
             border: "1px solid #d1d5db",
             borderRadius: 6,
             fontSize: 13,
-            width: 260,
+            width: 220,
             outline: "none",
           }}
         />
-
         <label
           style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
         >
@@ -919,6 +1088,17 @@ function App() {
           Active only
         </label>
 
+        {filterUI.activeFilterCount > 0 && (
+          <button
+            onClick={() => {
+              filterUI.clearAllFilters();
+            }}
+            style={{ ...btnStyle, color: "#3b82f6", borderColor: "#93c5fd" }}
+          >
+            Clear {filterUI.activeFilterCount} filter{filterUI.activeFilterCount > 1 ? "s" : ""} ✕
+          </button>
+        )}
+
         {sortState && (
           <button
             onClick={() => {
@@ -929,7 +1109,6 @@ function App() {
             Clear sort ×
           </button>
         )}
-
         {overrides.size > 0 && (
           <button
             onClick={() => {
@@ -941,27 +1120,47 @@ function App() {
           </button>
         )}
 
+        {/* Pagination toggle */}
+        <label
+          style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={usePaging}
+            onChange={(e) => {
+              setUsePaging(e.target.checked);
+            }}
+          />
+          Paging
+        </label>
+
+        {/* Band toggle */}
+        <label
+          style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={showBands}
+            onChange={(e) => {
+              setShowBands(e.target.checked);
+            }}
+          />
+          Bands
+        </label>
+
         {/* Column chooser */}
         <div ref={colChooserRef} style={{ position: "relative" }}>
           <button
             onClick={() => {
               setColChooserOpen((v) => !v);
             }}
-            style={{
-              ...btnStyle,
-              background: colChooserOpen ? "#f5f5f5" : "#fff",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}
+            style={{ ...btnStyle, display: "flex", alignItems: "center", gap: 4 }}
           >
             <span>Columns</span>
             <span style={{ fontSize: 11, color: "#6b7280" }}>
               {visibleCols.length}/{COLUMNS.length}
             </span>
-            <span style={{ fontSize: 9 }}>{colChooserOpen ? "▲" : "▼"}</span>
           </button>
-
           {colChooserOpen && (
             <div
               style={{
@@ -1007,42 +1206,25 @@ function App() {
                   {col.label}
                 </label>
               ))}
-              {colVis.hiddenCount > 0 && (
-                <>
-                  <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />
-                  <button
-                    onClick={() => {
-                      colVis.showAll();
-                    }}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "5px 14px",
-                      border: "none",
-                      background: "transparent",
-                      color: "#3b82f6",
-                      fontSize: 13,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Show all columns
-                  </button>
-                </>
-              )}
             </div>
           )}
         </div>
 
-        {/* Export CSV */}
         <button onClick={handleExportCsv} style={btnStyle}>
           Export CSV ↓
         </button>
+        <button
+          onClick={() => {
+            persistence.clear();
+          }}
+          style={{ ...btnStyle, fontSize: 12, color: "#6b7280" }}
+        >
+          Clear saved state
+        </button>
 
         <span style={{ marginLeft: "auto", fontSize: 12, color: "#6b7280" }}>
-          {rowModel.rowCount.toLocaleString()} / {BASE_DATA.length.toLocaleString()} rows
-          &nbsp;·&nbsp;right-click for menu&nbsp;·&nbsp;drag header to reorder &nbsp;·&nbsp;F2 /
-          double-click to edit
+          {(usePaging ? paged.rowModel.rowCount : rowModel.rowCount).toLocaleString()} /{" "}
+          {BASE_DATA.length.toLocaleString()} rows
         </span>
       </header>
 
@@ -1051,7 +1233,7 @@ function App() {
         <Grid
           rowCount={rowModel.rowCount}
           colCount={visibleCols.length}
-          headerRowCount={1}
+          headerRowCount={bands.headerRowCount}
           defaultRowHeight={32}
           defaultColWidth={120}
           colSizes={colSizes}
@@ -1060,6 +1242,278 @@ function App() {
           onCellDoubleClick={editing.gridExtension.onCellDoubleClick}
           keyboardExtension={keyboardExtension}
           style={{
+            height: usePaging ? "calc(100% - 44px)" : "100%",
+            border: "1px solid #d1d5db",
+            borderRadius: 6,
+            background: "#fff",
+          }}
+        />
+
+        {/* Pagination bar */}
+        {usePaging && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "8px 0",
+              fontSize: 13,
+              color: "#374151",
+            }}
+          >
+            <button onClick={paged.goFirst} disabled={!paged.canGoPrev} style={btnStyle}>
+              «
+            </button>
+            <button onClick={paged.goPrev} disabled={!paged.canGoPrev} style={btnStyle}>
+              ‹
+            </button>
+            <span>
+              Page {paged.currentPage + 1} / {paged.totalPages}
+            </span>
+            <button onClick={paged.goNext} disabled={!paged.canGoNext} style={btnStyle}>
+              ›
+            </button>
+            <button onClick={paged.goLast} disabled={!paged.canGoNext} style={btnStyle}>
+              »
+            </button>
+            <select
+              value={paged.pageSize}
+              onChange={(e) => {
+                paged.setPageSize(Number(e.target.value));
+              }}
+              style={{
+                padding: "4px 8px",
+                border: "1px solid #d1d5db",
+                borderRadius: 4,
+                fontSize: 13,
+              }}
+            >
+              {[20, 50, 100, 200, 500].map((s) => (
+                <option key={s} value={s}>
+                  {s} rows/page
+                </option>
+              ))}
+            </select>
+            <span style={{ color: "#6b7280" }}>({paged.totalRows.toLocaleString()} total)</span>
+          </div>
+        )}
+      </div>
+
+      <ContextMenu state={contextMenu.menuState} onClose={contextMenu.closeMenu} />
+      <FilterPopover state={filterUI.popover} onClose={filterUI.closePopover}>
+        {renderFilterPopoverContent()}
+      </FilterPopover>
+    </div>
+  );
+}
+
+// ============================================================================
+// Tab 2: Grouping Demo
+// ============================================================================
+
+const SMALL_DATA = generateData(500);
+
+function GroupingDemo() {
+  const source = useClientRowModel(SMALL_DATA, {
+    getId: useCallback((r: Employee) => r.id, []),
+  });
+
+  const grouping = useGrouping(source, {
+    groupBy: useMemo(
+      () => [
+        {
+          getGroupValue: (r: Employee) => r.department,
+          aggregates: [
+            { key: "count", fn: (rows: readonly Employee[]) => rows.length },
+            {
+              key: "avgSalary",
+              fn: (rows: readonly Employee[]) =>
+                Math.round(rows.reduce((s, r) => s + r.salary, 0) / rows.length),
+            },
+          ],
+        },
+        { getGroupValue: (r: Employee) => r.role },
+      ],
+      [],
+    ),
+    getId: useCallback((r: Employee) => r.id, []),
+  });
+
+  const renderCell = useCallback(
+    (cell: CellVM, { interactionState }: { interactionState: InteractionKernelState }) => {
+      if (cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd") {
+        const labels = ["", "Name", "Department", "Role", "Salary", "Count"];
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              paddingInline: 8,
+              background: "#f5f5f5",
+              borderBottom: "2px solid #d1d5db",
+              fontWeight: 600,
+              fontSize: 13,
+              boxSizing: "border-box",
+            }}
+          >
+            {labels[cell.colIndex] ?? ""}
+          </div>
+        );
+      }
+
+      const dataIndex = cell.rowIndex - 1;
+      if (dataIndex < 0 || dataIndex >= grouping.rowModel.rowCount) return null;
+
+      const row = grouping.rowModel.getRow(dataIndex);
+      const focused = isCellFocused(interactionState, cell.rowIndex, cell.colIndex);
+      const bg = focused ? "#dbeafe" : dataIndex % 2 !== 0 ? "#fafafa" : "#fff";
+
+      if (row.type === "group") {
+        if (cell.colIndex === 0) {
+          return (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                paddingLeft: 8 + row.depth * 20,
+                background: "#f0f9ff",
+                borderBottom: "1px solid #e0e7ff",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                boxSizing: "border-box",
+                gap: 6,
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              onClick={() => {
+                grouping.toggleGroup(row.key);
+              }}
+            >
+              <span style={{ fontSize: 10, color: "#6b7280" }}>{row.isExpanded ? "▼" : "▶"}</span>
+              <span>{String(row.groupValue)}</span>
+              <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 400 }}>({row.count})</span>
+            </div>
+          );
+        }
+        if (cell.colIndex === 4 && row.aggregates) {
+          return (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                paddingInline: 8,
+                background: "#f0f9ff",
+                borderBottom: "1px solid #e0e7ff",
+                fontSize: 12,
+                color: "#6b7280",
+                boxSizing: "border-box",
+              }}
+            >
+              avg ${(row.aggregates.avgSalary as number).toLocaleString()}
+            </div>
+          );
+        }
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              background: "#f0f9ff",
+              borderBottom: "1px solid #e0e7ff",
+              boxSizing: "border-box",
+            }}
+          />
+        );
+      }
+
+      // data row
+      const emp = row.row;
+      const values = [
+        emp.id,
+        emp.name,
+        emp.department,
+        emp.role,
+        `$${emp.salary.toLocaleString()}`,
+        "",
+      ];
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            paddingLeft: cell.colIndex === 0 ? 8 + row.depth * 20 : 8,
+            paddingRight: 8,
+            background: bg,
+            borderBottom: "1px solid #f3f4f6",
+            fontSize: 13,
+            boxSizing: "border-box",
+            justifyContent: cell.colIndex === 4 ? "flex-end" : "flex-start",
+          }}
+        >
+          {values[cell.colIndex] ?? ""}
+        </div>
+      );
+    },
+    [grouping],
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <header
+        style={{
+          padding: "10px 16px",
+          background: "#fff",
+          borderBottom: "1px solid #e5e7eb",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
+        <strong style={{ fontSize: 14 }}>Grouping Demo</strong>
+        <span style={{ fontSize: 12, color: "#6b7280" }}>
+          500 employees grouped by Department → Role
+        </span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button
+            onClick={() => {
+              grouping.expandAll();
+            }}
+            style={btnStyle}
+          >
+            Expand All
+          </button>
+          <button
+            onClick={() => {
+              grouping.collapseAll();
+            }}
+            style={btnStyle}
+          >
+            Collapse All
+          </button>
+        </div>
+      </header>
+      <div style={{ flex: 1, overflow: "hidden", padding: 12 }}>
+        <Grid
+          rowCount={grouping.rowModel.rowCount}
+          colCount={6}
+          headerRowCount={1}
+          defaultRowHeight={32}
+          defaultColWidth={120}
+          colSizes={{ 0: 250, 1: 150, 2: 130, 3: 100, 4: 120, 5: 60 }}
+          renderCell={renderCell}
+          style={{
             height: "100%",
             border: "1px solid #d1d5db",
             borderRadius: 6,
@@ -1067,23 +1521,487 @@ function App() {
           }}
         />
       </div>
-
-      {/* Context menu — rendered as a portal into document.body */}
-      <ContextMenu state={contextMenu.menuState} onClose={contextMenu.closeMenu} />
     </div>
   );
 }
 
-// Shared button style
-const btnStyle: React.CSSProperties = {
-  padding: "5px 10px",
-  border: "1px solid #d1d5db",
-  borderRadius: 6,
-  fontSize: 13,
-  cursor: "pointer",
-  background: "#fff",
-  color: "#374151",
-};
+// ============================================================================
+// Tab 3: Tree Grid Demo
+// ============================================================================
+
+type FileNode = { id: string; name: string; type: "folder" | "file"; size?: number };
+
+const FILE_TREE: TreeNode<FileNode>[] = [
+  {
+    row: { id: "src", name: "src", type: "folder" },
+    children: [
+      {
+        row: { id: "src/components", name: "components", type: "folder" },
+        children: [
+          { row: { id: "src/components/Grid.tsx", name: "Grid.tsx", type: "file", size: 12400 } },
+          { row: { id: "src/components/Cell.tsx", name: "Cell.tsx", type: "file", size: 3200 } },
+          {
+            row: { id: "src/components/Header.tsx", name: "Header.tsx", type: "file", size: 2800 },
+          },
+        ],
+      },
+      {
+        row: { id: "src/hooks", name: "hooks", type: "folder" },
+        children: [
+          { row: { id: "src/hooks/useGrid.ts", name: "useGrid.ts", type: "file", size: 8900 } },
+          { row: { id: "src/hooks/useSort.ts", name: "useSort.ts", type: "file", size: 2100 } },
+          { row: { id: "src/hooks/useFilter.ts", name: "useFilter.ts", type: "file", size: 3400 } },
+        ],
+      },
+      { row: { id: "src/index.ts", name: "index.ts", type: "file", size: 450 } },
+      { row: { id: "src/types.ts", name: "types.ts", type: "file", size: 1200 } },
+    ],
+  },
+  {
+    row: { id: "tests", name: "tests", type: "folder" },
+    children: [
+      { row: { id: "tests/grid.spec.ts", name: "grid.spec.ts", type: "file", size: 5600 } },
+      { row: { id: "tests/hooks.spec.ts", name: "hooks.spec.ts", type: "file", size: 4200 } },
+    ],
+  },
+  { row: { id: "package.json", name: "package.json", type: "file", size: 890 } },
+  { row: { id: "tsconfig.json", name: "tsconfig.json", type: "file", size: 320 } },
+  { row: { id: "README.md", name: "README.md", type: "file", size: 2400 } },
+];
+
+function TreeDemo() {
+  const tree = useTreeGrid(
+    FILE_TREE,
+    useCallback((r: FileNode) => r.id, []),
+  );
+
+  const renderCell = useCallback(
+    (cell: CellVM, { interactionState }: { interactionState: InteractionKernelState }) => {
+      if (cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd") {
+        const labels = ["Name", "Type", "Size"];
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              paddingInline: 8,
+              background: "#f5f5f5",
+              borderBottom: "2px solid #d1d5db",
+              fontWeight: 600,
+              fontSize: 13,
+              boxSizing: "border-box",
+            }}
+          >
+            {labels[cell.colIndex] ?? ""}
+          </div>
+        );
+      }
+
+      const dataIndex = cell.rowIndex - 1;
+      if (dataIndex < 0 || dataIndex >= tree.rowModel.rowCount) return null;
+
+      const row = tree.rowModel.getRow(dataIndex) as FlatTreeRow<FileNode>;
+      const focused = isCellFocused(interactionState, cell.rowIndex, cell.colIndex);
+      const bg = focused ? "#dbeafe" : dataIndex % 2 !== 0 ? "#fafafa" : "#fff";
+
+      if (cell.colIndex === 0) {
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              paddingLeft: 8 + row.depth * 20,
+              background: bg,
+              borderBottom: "1px solid #f3f4f6",
+              fontSize: 13,
+              cursor: row.hasChildren ? "pointer" : "default",
+              boxSizing: "border-box",
+              gap: 6,
+              outline: focused ? "2px solid #3b82f6" : "none",
+              outlineOffset: "-2px",
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={() => {
+              if (row.hasChildren) tree.toggleNode(row.nodeId);
+            }}
+          >
+            {row.hasChildren && (
+              <span style={{ fontSize: 10, color: "#6b7280", width: 12 }}>
+                {row.isExpanded ? "▼" : "▶"}
+              </span>
+            )}
+            {!row.hasChildren && <span style={{ width: 12 }} />}
+            <span style={{ fontSize: 14 }}>{row.row.type === "folder" ? "📁" : "📄"}</span>
+            <span>{row.row.name}</span>
+          </div>
+        );
+      }
+      if (cell.colIndex === 1) {
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              paddingInline: 8,
+              background: bg,
+              borderBottom: "1px solid #f3f4f6",
+              fontSize: 13,
+              boxSizing: "border-box",
+              color: "#6b7280",
+            }}
+          >
+            {row.row.type}
+          </div>
+        );
+      }
+      if (cell.colIndex === 2) {
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              paddingInline: 8,
+              background: bg,
+              borderBottom: "1px solid #f3f4f6",
+              fontSize: 13,
+              boxSizing: "border-box",
+              color: "#6b7280",
+            }}
+          >
+            {row.row.size ? `${(row.row.size / 1024).toFixed(1)} KB` : "—"}
+          </div>
+        );
+      }
+      return null;
+    },
+    [tree],
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <header
+        style={{
+          padding: "10px 16px",
+          background: "#fff",
+          borderBottom: "1px solid #e5e7eb",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
+        <strong style={{ fontSize: 14 }}>Tree Grid Demo</strong>
+        <span style={{ fontSize: 12, color: "#6b7280" }}>
+          File browser — click folders to expand/collapse
+        </span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button
+            onClick={() => {
+              tree.expandAll();
+            }}
+            style={btnStyle}
+          >
+            Expand All
+          </button>
+          <button
+            onClick={() => {
+              tree.collapseAll();
+            }}
+            style={btnStyle}
+          >
+            Collapse All
+          </button>
+        </div>
+      </header>
+      <div style={{ flex: 1, overflow: "hidden", padding: 12 }}>
+        <Grid
+          rowCount={tree.rowModel.rowCount}
+          colCount={3}
+          headerRowCount={1}
+          defaultRowHeight={32}
+          defaultColWidth={120}
+          colSizes={{ 0: 350, 1: 80, 2: 100 }}
+          renderCell={renderCell}
+          keyboardExtension={tree.keyboardExtension}
+          style={{
+            height: "100%",
+            border: "1px solid #d1d5db",
+            borderRadius: 6,
+            background: "#fff",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Tab 4: Server-side Demo
+// ============================================================================
+
+const SERVER_DATA = generateData(10_000);
+
+function ServerDemo() {
+  const mockFetch = useCallback(
+    (query: {
+      offset: number;
+      limit: number;
+    }): Promise<{ rows: Employee[]; totalCount: number }> => {
+      return new Promise((resolve) => {
+        setTimeout(
+          () => {
+            const rows = SERVER_DATA.slice(query.offset, query.offset + query.limit);
+            resolve({ rows, totalCount: SERVER_DATA.length });
+          },
+          200 + Math.random() * 300,
+        ); // simulate network latency
+      });
+    },
+    [],
+  );
+
+  const server = useServerRowModel<Employee>({
+    fetchRows: mockFetch,
+    getId: useCallback((r: Employee) => r.id, []),
+    pageSize: 100,
+    prefetchBuffer: 50,
+  });
+
+  const renderCell = useCallback(
+    (cell: CellVM, { interactionState }: { interactionState: InteractionKernelState }) => {
+      if (cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd") {
+        const labels = ["ID", "Name", "Department", "Role", "Salary"];
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              paddingInline: 8,
+              background: "#f5f5f5",
+              borderBottom: "2px solid #d1d5db",
+              fontWeight: 600,
+              fontSize: 13,
+              boxSizing: "border-box",
+            }}
+          >
+            {labels[cell.colIndex] ?? ""}
+          </div>
+        );
+      }
+
+      const dataIndex = cell.rowIndex - 1;
+      if (dataIndex < 0 || dataIndex >= server.rowModel.rowCount) return null;
+
+      const serverRow = server.rowModel.getRow(dataIndex);
+      const focused = isCellFocused(interactionState, cell.rowIndex, cell.colIndex);
+      const bg = focused ? "#dbeafe" : dataIndex % 2 !== 0 ? "#fafafa" : "#fff";
+
+      if (serverRow.type === "loading") {
+        return (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              paddingInline: 8,
+              background: bg,
+              borderBottom: "1px solid #f3f4f6",
+              fontSize: 13,
+              color: "#9ca3af",
+              boxSizing: "border-box",
+            }}
+          >
+            {cell.colIndex === 0 ? "Loading…" : ""}
+          </div>
+        );
+      }
+
+      const emp = serverRow.row;
+      const values = [
+        String(emp.id),
+        emp.name,
+        emp.department,
+        emp.role,
+        `$${emp.salary.toLocaleString()}`,
+      ];
+
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            paddingInline: 8,
+            background: bg,
+            borderBottom: "1px solid #f3f4f6",
+            fontSize: 13,
+            boxSizing: "border-box",
+            justifyContent: cell.colIndex === 0 || cell.colIndex === 4 ? "flex-end" : "flex-start",
+          }}
+        >
+          {values[cell.colIndex] ?? ""}
+        </div>
+      );
+    },
+    [server.rowModel],
+  );
+
+  // Request visible range on scroll
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget;
+      const scrollTop = el.scrollTop;
+      const viewHeight = el.clientHeight;
+      const rowHeight = 32;
+      const startRow = Math.floor(scrollTop / rowHeight);
+      const endRow = Math.ceil((scrollTop + viewHeight) / rowHeight);
+      server.requestVisibleRange(startRow, endRow);
+    },
+    [server],
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <header
+        style={{
+          padding: "10px 16px",
+          background: "#fff",
+          borderBottom: "1px solid #e5e7eb",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
+        <strong style={{ fontSize: 14 }}>Server-side Demo</strong>
+        <span style={{ fontSize: 12, color: "#6b7280" }}>
+          {server.totalCount.toLocaleString()} rows from mock server (200-500ms latency)
+        </span>
+        {server.isLoading && <span style={{ fontSize: 12, color: "#f59e0b" }}>Loading…</span>}
+        {server.error && (
+          <span style={{ fontSize: 12, color: "#ef4444" }}>Error: {server.error.message}</span>
+        )}
+        <button
+          onClick={() => {
+            server.refresh();
+          }}
+          style={{ ...btnStyle, marginLeft: "auto" }}
+        >
+          Refresh
+        </button>
+      </header>
+      <div style={{ flex: 1, overflow: "hidden", padding: 12 }} onScroll={handleScroll}>
+        <Grid
+          rowCount={server.totalCount}
+          colCount={5}
+          headerRowCount={1}
+          defaultRowHeight={32}
+          defaultColWidth={120}
+          colSizes={{ 0: 70, 1: 180, 2: 140, 3: 110, 4: 120 }}
+          renderCell={renderCell}
+          style={{
+            height: "100%",
+            border: "1px solid #d1d5db",
+            borderRadius: 6,
+            background: "#fff",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// App — Tab Container
+// ============================================================================
+
+type TabId = "full" | "grouping" | "tree" | "server";
+
+function App() {
+  const [activeTab, setActiveTab] = useState<TabId>("full");
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        fontFamily: "system-ui, sans-serif",
+        background: "#f9fafb",
+      }}
+    >
+      {/* Tab bar */}
+      <nav
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0,
+          background: "#fff",
+          borderBottom: "1px solid #e5e7eb",
+          paddingInline: 16,
+          flexShrink: 0,
+        }}
+      >
+        <strong style={{ fontSize: 15, marginRight: 16, color: "#111827" }}>hobom-grid</strong>
+        <button
+          style={tabBtnStyle(activeTab === "full")}
+          onClick={() => {
+            setActiveTab("full");
+          }}
+        >
+          Data Grid
+        </button>
+        <button
+          style={tabBtnStyle(activeTab === "grouping")}
+          onClick={() => {
+            setActiveTab("grouping");
+          }}
+        >
+          Grouping
+        </button>
+        <button
+          style={tabBtnStyle(activeTab === "tree")}
+          onClick={() => {
+            setActiveTab("tree");
+          }}
+        >
+          Tree Grid
+        </button>
+        <button
+          style={tabBtnStyle(activeTab === "server")}
+          onClick={() => {
+            setActiveTab("server");
+          }}
+        >
+          Server-side
+        </button>
+      </nav>
+
+      {/* Tab content */}
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        {activeTab === "full" && <FullDemo />}
+        {activeTab === "grouping" && <GroupingDemo />}
+        {activeTab === "tree" && <TreeDemo />}
+        {activeTab === "server" && <ServerDemo />}
+      </div>
+    </div>
+  );
+}
 
 const root = document.getElementById("root");
 if (root) {

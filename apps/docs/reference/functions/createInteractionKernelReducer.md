@@ -8,7 +8,7 @@
 
 > **createInteractionKernelReducer**(`config`): `InteractionKernelReducer`
 
-Defined in: [reducer/interaction-kernel-reducer.ts:310](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/reducer/interaction-kernel-reducer.ts#L310)
+Defined in: [reducer/interaction-kernel-reducer.ts:313](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/reducer/interaction-kernel-reducer.ts#L313)
 
 ## Parameters
 
