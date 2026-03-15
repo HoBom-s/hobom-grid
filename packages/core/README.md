@@ -4,6 +4,8 @@ Headless, framework-agnostic data grid engine.
 
 Handles virtualization, viewport querying, interaction state, editing, and data pipeline — with zero DOM or framework dependencies.
 
+**[Documentation](https://hobom-s.github.io/hobom-grid/)** | [React Adapter](https://www.npmjs.com/package/@hobom-grid/react)
+
 ## Install
 
 ```bash

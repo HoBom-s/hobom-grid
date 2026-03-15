@@ -4,18 +4,14 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "prepare": "husky install",
-    "ci:lint": "turbo lint",
-    "ci:knip": "pnpm -w knip:packages",
-    "ci:test": "turbo test",
-    "ci:build": "turbo build",
     "dev": "turbo dev",
     "dev:examples": "pnpm --filter examples-react dev",
     "typecheck": "turbo typecheck",
-    "typecheck:examples": "pnpm --filter examples-react typecheck",
     "build": "turbo build",
-    "build:examples": "pnpm --filter examples-react build",
     "build:core": "pnpm -w --filter @hobom-grid/core build",
     "build:react": "pnpm -w --filter @hobom-grid/react build",
+    "bench": "turbo run bench",
+    "bench:core": "pnpm -w --filter @hobom-grid/core bench",
     "test": "turbo run test",
     "coverage": "turbo run coverage",
     "test:core": "pnpm -w --filter @hobom-grid/core test",
@@ -28,12 +24,30 @@
     "lint:fix": "turbo lint -- --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "knip": "pnpm -w knip:core && pnpm -w knip:react",
     "knip:core": "knip --workspace packages/core --exports",
     "knip:react": "knip --workspace packages/react --exports",
-    "knip:packages": "pnpm -w knip:core && pnpm -w knip:react"
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,cjs,mjs}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@eslint/js": "^9.39.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",

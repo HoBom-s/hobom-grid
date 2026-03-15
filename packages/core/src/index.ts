@@ -34,8 +34,10 @@ export type { ViewModel, CellVM } from "./viewmodel/view-model";
 // Interaction Kernel (Phase 2)
 // -----------------------------
 export type { GridLayout, HitTarget, GridCellRef } from "./contracts/hit-test-model";
-export type { InteractionAction, ModifierKeys } from "./contracts/interaction-action";
+export type { InteractionAction, ModifierKeys, NavKey } from "./contracts/interaction-action";
 export type { InteractionKernelState } from "./state/interaction-kernel-state";
+export type { SelectionBitmap } from "./state/selection-bitmap";
+export { createSelectionBitmap } from "./state/selection-bitmap";
 
 export { defaultHitTest } from "./contracts/hit-test-model";
 export {
@@ -48,6 +50,49 @@ export {
 // -----------------------------
 export type { RowId, RowModel, SortDirection, SortSpec, FilterSpec } from "./row-model/row-model";
 export { createClientRowModel } from "./row-model/client-row-model";
+
+// Paging
+export type { PagedRowModelSpec, PagedRowModelResult } from "./row-model/paged-row-model";
+export { createPagedRowModel } from "./row-model/paged-row-model";
+
+// Filter model
+export type {
+  FilterColumnType,
+  FilterColumnDef,
+  ColumnFilterState,
+  FilterState,
+} from "./row-model/filter-model";
+export { composeFilterSpec } from "./row-model/filter-model";
+
+// Grouping
+export type {
+  GroupHeaderRow,
+  DataRow,
+  GroupedRow,
+  GroupBySpec,
+  GroupedRowModelSpec,
+  GroupNode,
+  GroupTree,
+  CreateGroupTreeSpec,
+} from "./row-model/grouped-row-model";
+export {
+  createGroupedRowModel,
+  createGroupTree,
+  flattenGroupTree,
+} from "./row-model/grouped-row-model";
+
+// Tree
+export type { TreeNode, FlatTreeRow, TreeRowModelSpec } from "./row-model/tree-row-model";
+export { createTreeRowModel } from "./row-model/tree-row-model";
+
+// Server-side
+export type {
+  ServerRow,
+  ServerQuery,
+  ServerResponse,
+  ServerRowModelSpec,
+} from "./row-model/server-row-model";
+export { createServerRowModel } from "./row-model/server-row-model";
 
 // -----------------------------
 // Editing System (Phase 4)

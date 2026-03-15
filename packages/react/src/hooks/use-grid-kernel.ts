@@ -9,6 +9,8 @@ type UseGridKernelSpec = Readonly<{
   defaultColWidth: number;
   /** Pre-set column sizes (px) keyed by column index. Applied as initialMeasured to the col axis. */
   colSizes?: Readonly<Record<number, number>>;
+  /** Pre-set row sizes (px) keyed by row index. Applied as initialMeasured to the row axis. */
+  rowSizes?: Readonly<Record<number, number>>;
   headerRowCount: number;
   pinnedColStartCount: number;
   pinnedColEndCount: number;
@@ -20,6 +22,7 @@ export type UseGridKernelResult = ReturnType<typeof useGridKernel>;
 export const useGridKernel = (spec: UseGridKernelSpec) => {
   // Stabilize colSizes by content — callers often pass inline objects with identical values.
   const colSizesKey = JSON.stringify(spec.colSizes ?? null);
+  const rowSizesKey = JSON.stringify(spec.rowSizes ?? null);
 
   const rowAxis: MeasuredAxis = useMemo(
     () =>
@@ -27,9 +30,11 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
         kind: "row",
         count: spec.rowCount,
         estimateSizePx: spec.defaultRowHeight,
+        initialMeasured: spec.rowSizes,
       }),
 
-    [spec.rowCount, spec.defaultRowHeight],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rowSizesKey is a content-based key for spec.rowSizes
+    [spec.rowCount, spec.defaultRowHeight, rowSizesKey],
   );
 
   const colAxis: MeasuredAxis = useMemo(
@@ -75,9 +80,9 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
     if (!el) return;
 
     const ro = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const { width, height } = entry.contentRect;
+      const {
+        contentRect: { width, height },
+      } = entries[0];
       setQuery((q) => ({
         ...q,
         viewportWidthPx: px(width),
@@ -86,7 +91,9 @@ export const useGridKernel = (spec: UseGridKernelSpec) => {
     });
 
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+    };
   }, []);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {

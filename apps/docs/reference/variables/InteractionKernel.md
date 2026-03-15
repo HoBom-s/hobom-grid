@@ -8,7 +8,7 @@
 
 > `const` **InteractionKernel**: `object`
 
-Defined in: [reducer/interaction-kernel-reducer.ts:496](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/reducer/interaction-kernel-reducer.ts#L496)
+Defined in: [reducer/interaction-kernel-reducer.ts:525](https://github.com/HoBom-s/hobom-grid/blob/main/packages/core/src/reducer/interaction-kernel-reducer.ts#L525)
 
 ## Type Declaration
 

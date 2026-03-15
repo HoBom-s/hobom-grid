@@ -36,19 +36,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm ci:lint
+        run: pnpm lint
 
       - name: Knip
-        run: pnpm ci:knip
-
-      - name: Build packages (needed for downstream typecheck)
-        run: pnpm --filter @hobom-grid/core build && pnpm --filter @hobom-grid/react build
+        run: pnpm knip
 
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Test
-        run: pnpm ci:test
+        run: pnpm test
+
+      - name: Coverage (threshold gate)
+        run: pnpm coverage
 
       - name: Build
-        run: pnpm ci:build
+        run: pnpm build

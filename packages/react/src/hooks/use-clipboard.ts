@@ -40,20 +40,22 @@ export const useClipboard = <TValue = unknown>(
   interactionState: InteractionKernelState,
 ): UseClipboardResult => {
   const optsRef = useRef(opts);
+
   // eslint-disable-next-line react-hooks/refs
   optsRef.current = opts;
 
   const interactionRef = useRef(interactionState);
+
   // eslint-disable-next-line react-hooks/refs
   interactionRef.current = interactionState;
 
-  // ── copy ──────────────────────────────────────────────────────────────────
+  // ----- copy -----
 
   const copy = useCallback(() => {
     const { selection } = interactionRef.current;
     if (selection.ranges.length === 0) return;
 
-    const range = selection.ranges[0]!;
+    const range = selection.ranges[0];
     const { getValue, formatValue } = optsRef.current;
 
     const lines: string[] = [];
@@ -69,7 +71,7 @@ export const useClipboard = <TValue = unknown>(
     void navigator.clipboard.writeText(lines.join("\n"));
   }, []);
 
-  // ── paste ─────────────────────────────────────────────────────────────────
+  // ----- paste -----
 
   const paste = useCallback(async () => {
     const { onPaste } = optsRef.current;
@@ -102,9 +104,10 @@ export const useClipboard = <TValue = unknown>(
     if (changes.length > 0) onPaste(changes);
   }, []);
 
-  // ── keyboard shortcut handler ─────────────────────────────────────────────
+  // ----- keyboard shortcut handler -----
 
   const pasteRef = useRef(paste);
+
   // eslint-disable-next-line react-hooks/refs
   pasteRef.current = paste;
 

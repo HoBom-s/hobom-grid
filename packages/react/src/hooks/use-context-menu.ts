@@ -73,7 +73,9 @@ export const useContextMenu = (): UseContextMenuResult => {
     setMenuState({ x, y, items });
   }, []);
 
-  const closeMenu = useCallback(() => setMenuState(null), []);
+  const closeMenu = useCallback(() => {
+    setMenuState(null);
+  }, []);
 
   // Auto-close on Escape or click outside the menu.
   useEffect(() => {

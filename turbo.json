@@ -17,7 +17,11 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
+    "bench": {
+      "cache": false
+    },
     "lint": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "typecheck": {

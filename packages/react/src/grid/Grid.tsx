@@ -1,13 +1,95 @@
-import { useRef, useMemo, useEffect, useCallback } from "react";
+import { useRef, useMemo, useEffect, useCallback, memo } from "react";
 import type { CellVM, InteractionKernelState, ViewportModel } from "@hobom-grid/core";
+import { createSelectionBitmap } from "@hobom-grid/core";
 import { useGridKernel } from "../hooks/use-grid-kernel";
 import { useInteraction } from "../hooks/use-interaction";
 import { hitTestGrid } from "../utils/hit-test";
+
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+const __DEV__ =
+  typeof globalThis !== "undefined" && (globalThis as any).process?.env?.NODE_ENV !== "production";
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+
+const safeRenderCell = (
+  renderCell: (cell: CellVM, state: GridRenderState) => React.ReactNode,
+  cell: CellVM,
+  state: GridRenderState,
+): React.ReactNode => {
+  try {
+    return renderCell(cell, state);
+  } catch (err) {
+    if (__DEV__) {
+      console.error(
+        `[hobom-grid] renderCell threw for cell (${cell.rowIndex}, ${cell.colIndex}):`,
+        err,
+      );
+    }
+    return null;
+  }
+};
 
 export type GridRenderState = Readonly<{
   interactionState: InteractionKernelState;
   viewport: ViewportModel;
 }>;
+
+// ----- Memoized cell component -----
+// Skips re-render when cell position/size, selection, and render state are unchanged.
+// During pure scroll all cells move (x/y change) so memo doesn't help there,
+// but for selection/focus changes only affected cells re-render.
+
+type GridCellProps = Readonly<{
+  cell: CellVM;
+  isFocused: boolean;
+  isSelected: boolean;
+  renderCell: (cell: CellVM, state: GridRenderState) => React.ReactNode;
+  renderState: GridRenderState;
+}>;
+
+/* eslint-disable react/prop-types -- TypeScript validates props */
+const GridCell = memo<GridCellProps>(
+  ({ cell, isFocused, isSelected, renderCell, renderState }) => {
+    const isHeader =
+      cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd";
+    const isPinned = cell.kind === "pinnedStart" || cell.kind === "pinnedEnd";
+
+    return (
+      <div
+        role={isHeader ? "columnheader" : "gridcell"}
+        aria-rowindex={cell.rowIndex + 1}
+        aria-colindex={cell.colIndex + 1}
+        aria-selected={isSelected || undefined}
+        data-focused={isFocused || undefined}
+        style={{
+          position: "absolute",
+          transform: `translate(${cell.x}px, ${cell.y}px)`,
+          width: cell.width,
+          height: cell.height,
+          overflow: "hidden",
+          boxSizing: "border-box",
+          pointerEvents: "auto",
+          zIndex: isHeader ? 2 : isPinned ? 1 : 0,
+        }}
+      >
+        {safeRenderCell(renderCell, cell, renderState)}
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.cell.x === next.cell.x &&
+    prev.cell.y === next.cell.y &&
+    prev.cell.width === next.cell.width &&
+    prev.cell.height === next.cell.height &&
+    prev.cell.rowIndex === next.cell.rowIndex &&
+    prev.cell.colIndex === next.cell.colIndex &&
+    prev.cell.kind === next.cell.kind &&
+    prev.isFocused === next.isFocused &&
+    prev.isSelected === next.isSelected &&
+    prev.renderCell === next.renderCell &&
+    prev.renderState === next.renderState,
+);
+/* eslint-enable react/prop-types */
+GridCell.displayName = "GridCell";
 
 export type GridProps = Readonly<{
   // Data size
@@ -24,6 +106,9 @@ export type GridProps = Readonly<{
 
   // Pre-set column sizes (px) keyed by column index
   colSizes?: Readonly<Record<number, number>>;
+
+  // Pre-set row sizes (px) keyed by row index (body rows, 0-based)
+  rowSizes?: Readonly<Record<number, number>>;
 
   // Grid structure
   headerRowCount?: number;
@@ -55,13 +140,18 @@ export type GridProps = Readonly<{
   className?: string;
 }>;
 
+// Helper: extract min/max from a range, treating empty (end < start) as no contribution
+const rMin = (r: { start: number; end: number }) => (r.end >= r.start ? r.start : Infinity);
+const rMax = (r: { start: number; end: number }) => (r.end >= r.start ? r.end : -Infinity);
+
 export const Grid = ({
-  rowCount,
-  colCount,
+  rowCount: rawRowCount,
+  colCount: rawColCount,
   defaultRowHeight = 32,
   defaultColWidth = 120,
   colSizes,
-  headerRowCount = 1,
+  rowSizes,
+  headerRowCount: rawHeaderRowCount = 1,
   pinnedColStartCount = 0,
   pinnedColEndCount = 0,
   overscanPx = 150,
@@ -72,6 +162,17 @@ export const Grid = ({
   style,
   className,
 }: GridProps) => {
+  if (__DEV__) {
+    if (rawRowCount < 0) console.warn("[hobom-grid] rowCount is negative:", rawRowCount);
+    if (rawColCount < 0) console.warn("[hobom-grid] colCount is negative:", rawColCount);
+    if (rawHeaderRowCount < 0)
+      console.warn("[hobom-grid] headerRowCount is negative:", rawHeaderRowCount);
+  }
+
+  const rowCount = Math.max(0, rawRowCount);
+  const colCount = Math.max(0, rawColCount);
+  const headerRowCount = Math.max(0, rawHeaderRowCount);
+
   // rowCount prop = body rows only; kernel needs total (header + body).
   const totalRowCount = rowCount + headerRowCount;
 
@@ -82,6 +183,7 @@ export const Grid = ({
       defaultRowHeight,
       defaultColWidth,
       colSizes,
+      rowSizes,
       headerRowCount,
       pinnedColStartCount,
       pinnedColEndCount,
@@ -91,12 +193,15 @@ export const Grid = ({
   // Stable refs so interaction handlers always see the latest values
   // without being recreated on every scroll
   const viewportRef = useRef(viewport);
+
   // eslint-disable-next-line react-hooks/refs
   viewportRef.current = viewport;
   const rowAxisRef = useRef(rowAxis);
+
   // eslint-disable-next-line react-hooks/refs
   rowAxisRef.current = rowAxis;
   const colAxisRef = useRef(colAxis);
+
   // eslint-disable-next-line react-hooks/refs
   colAxisRef.current = colAxis;
 
@@ -124,8 +229,34 @@ export const Grid = ({
     [interactionState, viewport],
   );
 
-  // ── Double-click → onCellDoubleClick ──────────────────────────────────────
+  // ----- Selection bitmap: O(R * area) build, O(1) per-cell lookup -----
+  const selectionBitmap = useMemo(() => {
+    const rowLo = Math.min(rMin(viewport.rows.header.range), rMin(viewport.rows.body.range));
+    const rowHi = Math.max(rMax(viewport.rows.header.range), rMax(viewport.rows.body.range));
+    const colLo = Math.min(
+      rMin(viewport.cols.start.range),
+      rMin(viewport.cols.main.range),
+      rMin(viewport.cols.end.range),
+    );
+    const colHi = Math.max(
+      rMax(viewport.cols.start.range),
+      rMax(viewport.cols.main.range),
+      rMax(viewport.cols.end.range),
+    );
+
+    return createSelectionBitmap(
+      interactionState.selection.ranges,
+      interactionState.focusCell,
+      Number.isFinite(rowLo) ? rowLo : 0,
+      Number.isFinite(rowHi) ? rowHi : -1,
+      Number.isFinite(colLo) ? colLo : 0,
+      Number.isFinite(colHi) ? colHi : -1,
+    );
+  }, [interactionState.selection.ranges, interactionState.focusCell, viewport]);
+
+  // ----- Double-click → onCellDoubleClick -----
   const onCellDoubleClickRef = useRef(onCellDoubleClick);
+
   // eslint-disable-next-line react-hooks/refs
   onCellDoubleClickRef.current = onCellDoubleClick;
 
@@ -150,8 +281,9 @@ export const Grid = ({
     [headerRowCount],
   );
 
-  // ── Keyboard: extension first, then interaction ───────────────────────────
+  // ----- Keyboard: extension first, then interaction -----
   const keyboardExtensionRef = useRef(keyboardExtension);
+
   // eslint-disable-next-line react-hooks/refs
   keyboardExtensionRef.current = keyboardExtension;
 
@@ -231,43 +363,17 @@ export const Grid = ({
         }}
       >
         {viewModel.cells.map((cell) => {
-          const isHeader =
-            cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd";
-          const isPinned = cell.kind === "pinnedStart" || cell.kind === "pinnedEnd";
-          const isFocused =
-            interactionState.focusCell?.row === cell.rowIndex &&
-            interactionState.focusCell?.col === cell.colIndex;
-          const isSelected =
-            isFocused ||
-            interactionState.selection.ranges.some(
-              (range) =>
-                cell.rowIndex >= range.start.row &&
-                cell.rowIndex <= range.end.row &&
-                cell.colIndex >= range.start.col &&
-                cell.colIndex <= range.end.col,
-            );
+          const isFocused = focusCell?.row === cell.rowIndex && focusCell.col === cell.colIndex;
 
           return (
-            <div
+            <GridCell
               key={`${cell.kind}-${cell.rowIndex}-${cell.colIndex}`}
-              role={isHeader ? "columnheader" : "gridcell"}
-              aria-rowindex={cell.rowIndex + 1}
-              aria-colindex={cell.colIndex + 1}
-              aria-selected={isSelected || undefined}
-              style={{
-                position: "absolute",
-                transform: `translate(${cell.x}px, ${cell.y}px)`,
-                width: cell.width,
-                height: cell.height,
-                overflow: "hidden",
-                boxSizing: "border-box",
-                pointerEvents: "auto",
-                // Header and pinned cells must stay on top of scrolling body cells.
-                zIndex: isHeader ? 2 : isPinned ? 1 : 0,
-              }}
-            >
-              {renderCell(cell, renderState)}
-            </div>
+              cell={cell}
+              isFocused={isFocused}
+              isSelected={selectionBitmap.isSelected(cell.rowIndex, cell.colIndex)}
+              renderCell={renderCell}
+              renderState={renderState}
+            />
           );
         })}
       </div>

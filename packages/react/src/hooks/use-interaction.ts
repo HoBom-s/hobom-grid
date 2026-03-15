@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import { createInteractionKernelReducer, InteractionKernel } from "@hobom-grid/core";
-import type { InteractionKernelState, MeasuredAxis, ViewportModel } from "@hobom-grid/core";
+import type { InteractionKernelState, MeasuredAxis, NavKey, ViewportModel } from "@hobom-grid/core";
 import { hitTestGrid } from "../utils/hit-test";
 import { getModifierKeys } from "../utils/dom-mods";
 
@@ -45,9 +45,9 @@ export type UseInteractionResult = {
  */
 export const useInteraction = (
   spec: UseInteractionSpec,
-  viewportRef: React.MutableRefObject<ViewportModel>,
-  rowAxisRef: React.MutableRefObject<MeasuredAxis>,
-  colAxisRef: React.MutableRefObject<MeasuredAxis>,
+  viewportRef: React.RefObject<ViewportModel>,
+  rowAxisRef: React.RefObject<MeasuredAxis>,
+  colAxisRef: React.RefObject<MeasuredAxis>,
 ): UseInteractionResult => {
   const reducer = useMemo(
     () =>
@@ -183,7 +183,7 @@ export const useInteraction = (
     e.preventDefault();
     dispatch({
       type: "KeyDown",
-      key: key as "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Escape" | "a",
+      key: key as NavKey,
       mods: getModifierKeys(e.nativeEvent),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

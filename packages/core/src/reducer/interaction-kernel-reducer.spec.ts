@@ -303,6 +303,72 @@ describe("InteractionKernel reducer", () => {
     });
   });
 
+  it("Home moves to first column in current row", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 3, col: 5 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "Home", mods: mods() });
+    expect(s1.selection.active).toEqual({ row: 3, col: 0 });
+  });
+
+  it("End moves to last column in current row", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 3, col: 2 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "End", mods: mods() });
+    expect(s1.selection.active).toEqual({ row: 3, col: 9 });
+  });
+
+  it("Ctrl+Home moves to (0, 0)", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 5, col: 5 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "Home", mods: mods({ ctrl: true }) });
+    expect(s1.selection.active).toEqual({ row: 0, col: 0 });
+  });
+
+  it("Ctrl+End moves to (rowCount-1, colCount-1)", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 0, col: 0 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "End", mods: mods({ ctrl: true }) });
+    expect(s1.selection.active).toEqual({ row: 9, col: 9 });
+  });
+
+  it("PageUp moves up by pageSize (default 20, clamped to 0)", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 5, col: 3 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "PageUp", mods: mods() });
+    expect(s1.selection.active).toEqual({ row: 0, col: 3 });
+  });
+
+  it("PageDown moves down by pageSize (default 20, clamped to max)", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 5, col: 3 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "PageDown", mods: mods() });
+    expect(s1.selection.active).toEqual({ row: 9, col: 3 });
+  });
+
+  it("Shift+Home creates range selection from anchor to start of row", () => {
+    const s0 = reducer(createInitialInteractionKernelState(), {
+      type: "SetActiveCell",
+      cell: { row: 3, col: 5 },
+    });
+    const s1 = reducer(s0, { type: "KeyDown", key: "Home", mods: mods({ shift: true }) });
+    expect(s1.selection.ranges[0]).toEqual({
+      start: { row: 3, col: 0 },
+      end: { row: 3, col: 5 },
+    });
+  });
+
   it("shift + row-header expands from existing anchor", () => {
     const reducer = createInteractionKernelReducer({
       rowCount: 6,
