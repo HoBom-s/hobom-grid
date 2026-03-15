@@ -37,8 +37,8 @@ const generateData = (count: number): Employee[] =>
   Array.from({ length: count }, (_, i) => ({
     id: i + 1,
     name: `Employee ${i + 1}`,
-    department: DEPARTMENTS[i % DEPARTMENTS.length]!,
-    role: ROLES[i % ROLES.length]!,
+    department: DEPARTMENTS[i % DEPARTMENTS.length],
+    role: ROLES[i % ROLES.length],
     salary: 40_000 + ((i * 1_337) % 120_000),
     age: 22 + (i % 43),
     active: i % 7 !== 0,
@@ -171,7 +171,7 @@ function App() {
     [overrides],
   );
 
-  // ── Data pipeline ──────────────────────────────────────────────────────────
+  // ----- Data pipeline -----
 
   const sort = useMemo<SortSpec<Employee>[] | undefined>(
     () => (sortState ? [{ key: sortState.key, direction: sortState.direction }] : undefined),
@@ -198,7 +198,7 @@ function App() {
     filter,
   });
 
-  // ── Column features (Phase 5) ──────────────────────────────────────────────
+  // ----- Column features (Phase 5) -----
 
   const initialWidths = useMemo(
     () => Object.fromEntries(COLUMNS.map((col, i) => [i, col.width])),
@@ -210,7 +210,6 @@ function App() {
   const [allColOrder, setAllColOrder] = useState<number[]>(() => COLUMNS.map((_, i) => i));
 
   const isVisibleRef = useRef(colVis.isVisible);
-  // eslint-disable-next-line react-hooks/refs
   isVisibleRef.current = colVis.isVisible;
 
   const onReorder = useCallback((fromVisual: number, toVisual: number) => {
@@ -218,13 +217,12 @@ function App() {
       const visCols = prev.filter((i) => isVisibleRef.current(i));
       const fromOrig = visCols[fromVisual];
       const toOrig = visCols[toVisual];
-      if (fromOrig === undefined || toOrig === undefined) return prev;
       const fromPos = prev.indexOf(fromOrig);
       const toPos = prev.indexOf(toOrig);
       if (fromPos === -1 || toPos === -1) return prev;
       const next = [...prev];
       const [moved] = next.splice(fromPos, 1);
-      next.splice(toPos, 0, moved!);
+      next.splice(toPos, 0, moved);
       return next;
     });
   }, []);
@@ -237,21 +235,17 @@ function App() {
   );
 
   const visibleColsRef = useRef(visibleCols);
-  // eslint-disable-next-line react-hooks/refs
   visibleColsRef.current = visibleCols;
 
   const colSizes = useMemo(
     () =>
       Object.fromEntries(
-        visibleCols.map((origIdx, visIdx) => [
-          visIdx,
-          colResize.colWidths[origIdx] ?? COLUMNS[origIdx]?.width ?? 120,
-        ]),
+        visibleCols.map((origIdx, visIdx) => [visIdx, colResize.colWidths[origIdx]]),
       ),
     [visibleCols, colResize.colWidths],
   );
 
-  // ── Column chooser UI ──────────────────────────────────────────────────────
+  // ----- Column chooser UI -----
 
   const [colChooserOpen, setColChooserOpen] = useState(false);
   const colChooserRef = useRef<HTMLDivElement>(null);
@@ -265,10 +259,12 @@ function App() {
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [colChooserOpen]);
 
-  // ── Ecosystem (Phase 6) ────────────────────────────────────────────────────
+  // ----- Ecosystem (Phase 6) -----
 
   const contextMenu = useContextMenu();
 
@@ -277,36 +273,34 @@ function App() {
     columns: useMemo(
       () =>
         visibleCols.map((origIdx) => {
-          const col = COLUMNS[origIdx]!;
+          const col = COLUMNS[origIdx];
+          const fmt = col.format;
           return {
             label: col.label,
             getValue: (row: Employee) => row[col.key],
-            formatValue: col.format ? (v: unknown) => col.format!(v) : undefined,
+            formatValue: fmt ? (v: unknown) => fmt(v) : undefined,
           };
         }),
       [visibleCols],
     ),
   });
 
-  // ── Value access ───────────────────────────────────────────────────────────
+  // ----- Value access -----
 
   const interactionStateRef = useRef<InteractionKernelState | null>(null);
 
   const getValue = useCallback(
     (row: number, col: number): unknown => {
-      const origIdx = visibleColsRef.current[col] ?? col;
-      if (row === 0) return COLUMNS[origIdx]?.label ?? "";
+      const origIdx = visibleColsRef.current[col];
+      if (row === 0) return COLUMNS[origIdx].label;
       const dataIndex = row - 1;
-      if (dataIndex < 0 || dataIndex >= rowModel.rowCount) return "";
       const employee = rowModel.getRow(dataIndex);
-      const colDef = COLUMNS[origIdx];
-      if (!colDef) return "";
-      return employee[colDef.key];
+      return employee[COLUMNS[origIdx].key];
     },
     [rowModel],
   );
 
-  // ── Editing ────────────────────────────────────────────────────────────────
+  // ----- Editing -----
 
   const stableInteractionState = useMemo(
     () =>
@@ -318,17 +312,17 @@ function App() {
     [],
   );
 
-  const editing = useEditing<unknown>(
+  const editing = useEditing(
     {
       getValue,
       isEditable: (row, col) => {
-        const origIdx = visibleColsRef.current[col] ?? col;
-        return row > 0 && (COLUMNS[origIdx]?.editable ?? false);
+        const origIdx = visibleColsRef.current[col];
+        return row > 0 && COLUMNS[origIdx].editable === true;
       },
       validate: (value, { col }) => {
-        const origIdx = visibleColsRef.current[col] ?? col;
+        const origIdx = visibleColsRef.current[col];
         const colDef = COLUMNS[origIdx];
-        if (!colDef?.editable) return { valid: true };
+        if (!colDef.editable) return { valid: true };
         if (colDef.key === "salary" || colDef.key === "age") {
           const n = Number(value);
           if (isNaN(n) || n < 0) return { valid: false, message: "Must be a positive number" };
@@ -339,11 +333,10 @@ function App() {
         return { valid: true };
       },
       onCommit: ({ row, col, newValue }) => {
-        const origIdx = visibleColsRef.current[col] ?? col;
+        const origIdx = visibleColsRef.current[col];
         const dataIndex = row - 1;
         const employee = rowModel.getRow(dataIndex);
         const colDef = COLUMNS[origIdx];
-        if (!colDef || !employee) return;
         const parsed = colDef.parse
           ? colDef.parse(String(newValue), employee[colDef.key])
           : newValue;
@@ -357,15 +350,14 @@ function App() {
     stableInteractionState,
   );
 
-  // ── Clipboard ──────────────────────────────────────────────────────────────
-
-  const clipboard = useClipboard<unknown>(
+  // ----- Clipboard -----
+  const clipboard = useClipboard(
     {
       getValue,
       formatValue: (v, _r, col) => {
-        const origIdx = visibleColsRef.current[col] ?? col;
+        const origIdx = visibleColsRef.current[col];
         const colDef = COLUMNS[origIdx];
-        if (!colDef) return String(v ?? "");
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         return colDef.format ? colDef.format(v) : String(v ?? "");
       },
       onPaste: (changes) => {
@@ -373,11 +365,11 @@ function App() {
         for (const { row, col, value } of changes) {
           if (row === 0) continue;
           const dataIndex = row - 1;
-          if (dataIndex < 0 || dataIndex >= rowModel.rowCount) continue;
+          if (dataIndex >= rowModel.rowCount) continue;
           const employee = rowModel.getRow(dataIndex);
-          const origIdx = visibleColsRef.current[col] ?? col;
+          const origIdx = visibleColsRef.current[col];
           const colDef = COLUMNS[origIdx];
-          if (!colDef?.editable) continue;
+          if (!colDef.editable) continue;
           const parsed = colDef.parse ? colDef.parse(value, employee[colDef.key]) : value;
           const existing = updates.get(employee.id) ?? {};
           updates.set(employee.id, { ...existing, [colDef.key]: parsed });
@@ -395,7 +387,7 @@ function App() {
     stableInteractionState,
   );
 
-  // ── Keyboard extensions (editing + clipboard) ──────────────────────────────
+  // ----- Keyboard extensions (editing + clipboard) -----
 
   const keyboardExtension = useMemo(
     () => ({
@@ -407,47 +399,41 @@ function App() {
     [editing.gridExtension.keyboardExtension.onKeyDown, clipboard.onKeyDown],
   );
 
-  // ── Stable refs used inside renderCell closures ────────────────────────────
+  // ----- Stable refs used inside renderCell closures -----
 
   const sortStateRef = useRef(sortState);
-  // eslint-disable-next-line react-hooks/refs
   sortStateRef.current = sortState;
 
   const rowModelRef = useRef(rowModel);
-  // eslint-disable-next-line react-hooks/refs
   rowModelRef.current = rowModel;
 
   const clipboardRef = useRef(clipboard);
-  // eslint-disable-next-line react-hooks/refs
   clipboardRef.current = clipboard;
 
   const colVisRef = useRef(colVis);
-  // eslint-disable-next-line react-hooks/refs
   colVisRef.current = colVis;
 
   const colResizeRef = useRef(colResize);
-  // eslint-disable-next-line react-hooks/refs
   colResizeRef.current = colResize;
 
-  // ── Cell renderer ──────────────────────────────────────────────────────────
+  // ----- Cell renderer -----
 
   const renderCell = useCallback(
     (cell: CellVM, { interactionState }: { interactionState: InteractionKernelState }) => {
       interactionStateRef.current = interactionState;
 
-      const origIdx = visibleColsRef.current[cell.colIndex] ?? cell.colIndex;
+      const origIdx = visibleColsRef.current[cell.colIndex];
       const col = COLUMNS[origIdx];
-      if (!col) return null;
 
       const isDragging = colReorder.dragState?.fromVisual === cell.colIndex;
       const isDropTarget = colReorder.dragState?.overVisual === cell.colIndex;
 
-      // ── Header ─────────────────────────────────────────────────────────────
+      // ----- Header -----
       if (cell.kind === "header" || cell.kind === "cornerStart" || cell.kind === "cornerEnd") {
         colReorder.reportColBounds(cell.colIndex, cell.x, cell.width);
 
-        const isSorted = sortState?.key === col.key;
-        const nextDir = isSorted && sortState?.direction === "asc" ? "desc" : "asc";
+        const isSorted = sortState != null && sortState.key === col.key;
+        const nextDir = isSorted && sortState.direction === "asc" ? "desc" : "asc";
 
         const handleHeaderContextMenu = (e: React.MouseEvent) => {
           e.preventDefault();
@@ -462,21 +448,27 @@ function App() {
               label: "Sort A → Z",
               icon: "↑",
               disabled: ss?.key === col.key && ss.direction === "asc",
-              onSelect: () => setSortState({ key: col.key, direction: "asc" }),
+              onSelect: () => {
+                setSortState({ key: col.key, direction: "asc" });
+              },
             },
             {
               kind: "action",
               label: "Sort Z → A",
               icon: "↓",
               disabled: ss?.key === col.key && ss.direction === "desc",
-              onSelect: () => setSortState({ key: col.key, direction: "desc" }),
+              onSelect: () => {
+                setSortState({ key: col.key, direction: "desc" });
+              },
             },
             {
               kind: "action",
               label: "Clear Sort",
               icon: "✕",
               disabled: ss?.key !== col.key,
-              onSelect: () => setSortState(null),
+              onSelect: () => {
+                setSortState(null);
+              },
             },
             { kind: "separator" },
             { kind: "label", text: "Column" },
@@ -484,21 +476,27 @@ function App() {
               kind: "action",
               label: "Hide Column",
               icon: "🙈",
-              onSelect: () => cv.toggleVisibility(origIdx),
+              onSelect: () => {
+                cv.toggleVisibility(origIdx);
+              },
             },
             {
               kind: "action",
               label: "Show All Columns",
               icon: "👁",
               disabled: cv.hiddenCount === 0,
-              onSelect: () => cv.showAll(),
+              onSelect: () => {
+                cv.showAll();
+              },
             },
             { kind: "separator" },
             {
               kind: "action",
               label: "Reset Width",
               icon: "↔",
-              onSelect: () => cr.resetWidth(origIdx),
+              onSelect: () => {
+                cr.resetWidth(origIdx);
+              },
             },
           ];
           contextMenu.openMenu(e.clientX, e.clientY, items);
@@ -537,7 +535,9 @@ function App() {
               );
               e.stopPropagation();
             }}
-            onClick={() => setSortState({ key: col.key, direction: nextDir })}
+            onClick={() => {
+              setSortState({ key: col.key, direction: nextDir });
+            }}
             onContextMenu={handleHeaderContextMenu}
           >
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -545,7 +545,7 @@ function App() {
             </span>
             {isSorted && (
               <span style={{ fontSize: 10, color: "#6b7280", flexShrink: 0 }}>
-                {sortState!.direction === "asc" ? "▲" : "▼"}
+                {sortState.direction === "asc" ? "▲" : "▼"}
               </span>
             )}
 
@@ -565,7 +565,9 @@ function App() {
                 e.stopPropagation();
                 e.preventDefault();
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
               onContextMenu={(e) => {
                 e.stopPropagation();
                 handleHeaderContextMenu(e);
@@ -575,7 +577,7 @@ function App() {
         );
       }
 
-      // ── Body ───────────────────────────────────────────────────────────────
+      // ----- Body -----
       const dataIndex = cell.rowIndex - 1;
       if (dataIndex < 0 || dataIndex >= rowModel.rowCount) return null;
 
@@ -587,7 +589,7 @@ function App() {
       const errMsg = isEditing ? editing.editingState.activeEdit?.validationMessage : undefined;
 
       const rawValue = row[col.key];
-      const display = col.format ? col.format(rawValue) : String(rawValue ?? "");
+      const display = col.format ? col.format(rawValue) : String(rawValue);
 
       // Edit mode
       if (isEditing && col.editable) {
@@ -595,8 +597,11 @@ function App() {
           <div style={{ width: "100%", height: "100%", position: "relative" }}>
             <input
               autoFocus
-              defaultValue={String(editing.editValue ?? rawValue ?? "")}
-              onChange={(e) => editing.setEditValue(e.target.value)}
+              // eslint-disable-next-line @typescript-eslint/no-base-to-string
+              defaultValue={String(editing.editValue ?? rawValue)}
+              onChange={(e) => {
+                editing.setEditValue(e.target.value);
+              }}
               onBlur={() => void editing.commit()}
               style={{
                 width: "100%",
@@ -661,13 +666,13 @@ function App() {
         e.preventDefault();
         const hasSelection =
           interactionState.selection.ranges.length > 0 &&
-          (interactionState.selection.ranges[0]!.start.row !==
-            interactionState.selection.ranges[0]!.end.row ||
-            interactionState.selection.ranges[0]!.start.col !==
-              interactionState.selection.ranges[0]!.end.col);
+          (interactionState.selection.ranges[0].start.row !==
+            interactionState.selection.ranges[0].end.row ||
+            interactionState.selection.ranges[0].start.col !==
+              interactionState.selection.ranges[0].end.col);
 
         const cellValue = rawValue;
-        const cellText = col.format ? col.format(cellValue) : String(cellValue ?? "");
+        const cellText = col.format ? col.format(cellValue) : String(cellValue);
         const cb = clipboardRef.current;
         const ss = sortStateRef.current;
 
@@ -685,7 +690,9 @@ function App() {
             label: "Copy Selection",
             icon: "⎘",
             disabled: !hasSelection,
-            onSelect: () => cb.copy(),
+            onSelect: () => {
+              cb.copy();
+            },
           },
           {
             kind: "action",
@@ -703,7 +710,9 @@ function App() {
             label: "Edit Cell",
             icon: "✏",
             shortcut: "F2",
-            onSelect: () => editing.startEdit(cell.rowIndex, cell.colIndex),
+            onSelect: () => {
+              editing.startEdit(cell.rowIndex, cell.colIndex);
+            },
           });
         }
 
@@ -715,14 +724,18 @@ function App() {
             label: "Sort A → Z",
             icon: "↑",
             disabled: ss?.key === col.key && ss.direction === "asc",
-            onSelect: () => setSortState({ key: col.key, direction: "asc" }),
+            onSelect: () => {
+              setSortState({ key: col.key, direction: "asc" });
+            },
           });
           items.push({
             kind: "action",
             label: "Sort Z → A",
             icon: "↓",
             disabled: ss?.key === col.key && ss.direction === "desc",
-            onSelect: () => setSortState({ key: col.key, direction: "desc" }),
+            onSelect: () => {
+              setSortState({ key: col.key, direction: "desc" });
+            },
           });
         }
 
@@ -800,7 +813,9 @@ function App() {
             onContextMenu={handleCellContextMenu}
           >
             <button
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
               onClick={() => {
                 setOverrides((prev) => {
                   const next = new Map(prev);
@@ -842,7 +857,7 @@ function App() {
     [rowModel, sortState, editing, setOverrides, colReorder, colResize, contextMenu.openMenu],
   );
 
-  // ── Export CSV handler ─────────────────────────────────────────────────────
+  // ----- Export CSV handler -----
 
   const handleExportCsv = useCallback(() => {
     const exportRows = Array.from({ length: rowModel.rowCount }, (_, i) => rowModel.getRow(i));
@@ -878,7 +893,9 @@ function App() {
           type="text"
           placeholder="Filter by name / department / role…"
           value={filterText}
-          onChange={(e) => setFilterText(e.target.value)}
+          onChange={(e) => {
+            setFilterText(e.target.value);
+          }}
           style={{
             padding: "5px 10px",
             border: "1px solid #d1d5db",
@@ -895,20 +912,29 @@ function App() {
           <input
             type="checkbox"
             checked={showActiveOnly}
-            onChange={(e) => setShowActiveOnly(e.target.checked)}
+            onChange={(e) => {
+              setShowActiveOnly(e.target.checked);
+            }}
           />
           Active only
         </label>
 
         {sortState && (
-          <button onClick={() => setSortState(null)} style={btnStyle}>
+          <button
+            onClick={() => {
+              setSortState(null);
+            }}
+            style={btnStyle}
+          >
             Clear sort ×
           </button>
         )}
 
         {overrides.size > 0 && (
           <button
-            onClick={() => setOverrides(new Map())}
+            onClick={() => {
+              setOverrides(new Map());
+            }}
             style={{ ...btnStyle, borderColor: "#f87171", color: "#dc2626" }}
           >
             Reset edits ({overrides.size})
@@ -918,7 +944,9 @@ function App() {
         {/* Column chooser */}
         <div ref={colChooserRef} style={{ position: "relative" }}>
           <button
-            onClick={() => setColChooserOpen((v) => !v)}
+            onClick={() => {
+              setColChooserOpen((v) => !v);
+            }}
             style={{
               ...btnStyle,
               background: colChooserOpen ? "#f5f5f5" : "#fff",
@@ -971,7 +999,9 @@ function App() {
                   <input
                     type="checkbox"
                     checked={colVis.isVisible(i)}
-                    onChange={() => colVis.toggleVisibility(i)}
+                    onChange={() => {
+                      colVis.toggleVisibility(i);
+                    }}
                     style={{ accentColor: "#3b82f6" }}
                   />
                   {col.label}
@@ -981,7 +1011,9 @@ function App() {
                 <>
                   <div style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />
                   <button
-                    onClick={() => colVis.showAll()}
+                    onClick={() => {
+                      colVis.showAll();
+                    }}
                     style={{
                       display: "block",
                       width: "100%",
@@ -1053,8 +1085,11 @@ const btnStyle: React.CSSProperties = {
   color: "#374151",
 };
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const root = document.getElementById("root");
+if (root) {
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+}

@@ -79,7 +79,9 @@ const ContextMenuPanel = ({ state, onClose }: PanelProps) => {
     };
 
     menu.addEventListener("keydown", onKeyDown);
-    return () => menu.removeEventListener("keydown", onKeyDown);
+    return () => {
+      menu.removeEventListener("keydown", onKeyDown);
+    };
   }, [state]);
 
   return (
@@ -91,15 +93,17 @@ const ContextMenuPanel = ({ state, onClose }: PanelProps) => {
         position: "fixed",
         left: state.x,
         top: state.y,
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--grid-menu-bg, #fff)",
+        border: `1px solid var(--grid-menu-border, #e5e7eb)`,
         borderRadius: 8,
         padding: "4px 0",
         minWidth: 188,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06)",
+        boxShadow:
+          "var(--grid-menu-shadow, 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06))",
         zIndex: 9999,
         fontFamily: "system-ui, sans-serif",
         fontSize: 13,
+        color: "var(--grid-menu-text, #111827)",
         outline: "none",
       }}
       tabIndex={-1}
@@ -117,7 +121,12 @@ const ContextMenuPanel = ({ state, onClose }: PanelProps) => {
 
 const ContextMenuItemView = ({ item, onClose }: { item: ContextMenuItem; onClose: () => void }) => {
   if (item.kind === "separator") {
-    return <div role="separator" style={{ height: 1, background: "#f3f4f6", margin: "4px 0" }} />;
+    return (
+      <div
+        role="separator"
+        style={{ height: 1, background: "var(--grid-menu-separator, #e5e7eb)", margin: "4px 0" }}
+      />
+    );
   }
 
   if (item.kind === "label") {
@@ -126,7 +135,7 @@ const ContextMenuItemView = ({ item, onClose }: { item: ContextMenuItem; onClose
         style={{
           padding: "3px 14px",
           fontSize: 11,
-          color: "#9ca3af",
+          color: "var(--grid-menu-label, #9ca3af)",
           fontWeight: 600,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
@@ -158,21 +167,23 @@ const ContextMenuItemView = ({ item, onClose }: { item: ContextMenuItem; onClose
         border: "none",
         cursor: item.disabled ? "not-allowed" : "pointer",
         textAlign: "left",
-        color: item.disabled ? "#d1d5db" : "#111827",
+        color: item.disabled
+          ? "var(--grid-menu-disabled, #d1d5db)"
+          : "var(--grid-menu-text, #111827)",
         gap: 8,
         outline: "none",
         boxSizing: "border-box",
       }}
       onMouseEnter={(e) => {
         if (!item.disabled) {
-          (e.currentTarget as HTMLElement).style.background = "#f5f5f5";
+          (e.currentTarget as HTMLElement).style.background = "var(--grid-menu-hover, #f5f5f5)";
         }
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLElement).style.background = "transparent";
       }}
       onFocus={(e) => {
-        (e.currentTarget as HTMLElement).style.background = "#f5f5f5";
+        (e.currentTarget as HTMLElement).style.background = "var(--grid-menu-hover, #f5f5f5)";
       }}
       onBlur={(e) => {
         (e.currentTarget as HTMLElement).style.background = "transparent";
@@ -188,7 +199,14 @@ const ContextMenuItemView = ({ item, onClose }: { item: ContextMenuItem; onClose
       )}
       <span style={{ flex: 1 }}>{item.label}</span>
       {item.shortcut != null && (
-        <span style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0, marginLeft: 12 }}>
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--grid-menu-label, #9ca3af)",
+            flexShrink: 0,
+            marginLeft: 12,
+          }}
+        >
           {item.shortcut}
         </span>
       )}

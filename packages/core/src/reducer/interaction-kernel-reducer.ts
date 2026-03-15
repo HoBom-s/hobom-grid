@@ -125,6 +125,9 @@ type InteractionKernelConfig = Readonly<{
 
   /** If true, Ctrl/Cmd+A selects all */
   enableSelectAll: boolean;
+
+  /** Number of rows to jump on PageUp/PageDown. Default: 20 */
+  pageSize?: number;
 }>;
 
 const startSelectionDrag = (
@@ -151,7 +154,7 @@ const updateSelectionDrag = (
   mods: { shift: boolean },
 ): InteractionKernelState => {
   const drag = state.drag;
-  if (!drag || drag.kind !== "selection") return state;
+  if (!drag) return state;
 
   const anchor = mods.shift ? (state.selection.anchor ?? drag.anchorAtStart) : drag.anchorAtStart;
 
@@ -388,40 +391,66 @@ export const createInteractionKernelReducer = (
           };
         }
 
-        const nav =
-          action.key === "ArrowUp"
-            ? "up"
-            : action.key === "ArrowDown"
-              ? "down"
-              : action.key === "ArrowLeft"
-                ? "left"
-                : action.key === "ArrowRight"
-                  ? "right"
-                  : null;
-
-        if (!nav) {
-          if (action.key === "Escape") {
-            return {
-              ...state,
-              selection: {
-                active: state.selection.active,
-                anchor: state.selection.anchor,
-                ranges: [],
-              },
-            };
-          }
-          return state;
+        if (action.key === "Escape") {
+          return {
+            ...state,
+            selection: {
+              active: state.selection.active,
+              anchor: state.selection.anchor,
+              ranges: [],
+            },
+          };
         }
 
-        const next = moveCell(active, nav, {
-          rowCount: config.rowCount,
-          colCount: config.colCount,
-        });
+        const bounds = { rowCount: config.rowCount, colCount: config.colCount };
+        const ps = config.pageSize ?? 20;
+        let next: GridCellRef | null = null;
 
-        // shift => range expand
+        switch (action.key) {
+          case "ArrowUp":
+          case "ArrowDown":
+          case "ArrowLeft":
+          case "ArrowRight": {
+            const dir =
+              action.key === "ArrowUp"
+                ? "up"
+                : action.key === "ArrowDown"
+                  ? "down"
+                  : action.key === "ArrowLeft"
+                    ? "left"
+                    : "right";
+            next = moveCell(active, dir, bounds);
+            break;
+          }
+          case "Home":
+            next =
+              action.mods.ctrl || action.mods.meta
+                ? { row: 0, col: 0 }
+                : { row: active.row, col: 0 };
+            break;
+          case "End":
+            next =
+              action.mods.ctrl || action.mods.meta
+                ? { row: Math.max(0, bounds.rowCount - 1), col: Math.max(0, bounds.colCount - 1) }
+                : { row: active.row, col: Math.max(0, bounds.colCount - 1) };
+            break;
+          case "PageUp":
+            next = {
+              row: Math.max(0, active.row - ps),
+              col: active.col,
+            };
+            break;
+          case "PageDown":
+            next = {
+              row: Math.min(Math.max(0, bounds.rowCount - 1), active.row + ps),
+              col: active.col,
+            };
+            break;
+          default:
+            return state;
+        }
+
         if (action.mods.shift) return setRangeSelectionFromAnchor(state, next);
-
-        // plain nav => move active single selection
         return setSingleSelection(state, next);
       }
 

@@ -1,16 +1,11 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+npx lint-staged
+
 CHANGED_FILES="$(git diff --cached --name-only)"
 
-if echo "$CHANGED_FILES" | grep -E '^(packages/(core|react)/)'; then
-  echo "packages/core or react changed → running checks"
-
-  echo "→ running knip (unused exports/types)"
-  pnpm knip:packages
-
-  echo "→ generating API docs"
-  pnpm docs:api
-else
-  echo "no core/react changes → skip knip & docs"
+if echo "$CHANGED_FILES" | grep -qE '^(packages/(core|react)/)'; then
+  echo "packages/core or react changed → running knip"
+  pnpm knip
 fi

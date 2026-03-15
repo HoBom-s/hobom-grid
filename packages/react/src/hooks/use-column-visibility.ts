@@ -40,7 +40,9 @@ export const useColumnVisibility = (_colCount: number): UseColumnVisibilityResul
     });
   }, []);
 
-  const showAll = useCallback(() => setHiddenCols(new Set()), []);
+  const showAll = useCallback(() => {
+    setHiddenCols(new Set());
+  }, []);
 
   return { isVisible, toggleVisibility, showAll, hiddenCount: hiddenCols.size };
 };

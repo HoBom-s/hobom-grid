@@ -95,7 +95,7 @@ const findSegmentIndex = (
 
   // Fast bounds check
   const start = offsets[0] ?? 0;
-  const end = offsets.length >= n + 1 ? offsets[n]! : (offsets[n - 1] ?? 0) + sizes[n - 1]!;
+  const end = offsets.length >= n + 1 ? offsets[n] : (offsets[n - 1] ?? 0) + sizes[n - 1];
 
   if (value < start || value >= end) return null;
 
@@ -105,7 +105,7 @@ const findSegmentIndex = (
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
     const s = offsets[mid] ?? 0;
-    const e = offsets.length >= n + 1 ? offsets[mid + 1]! : s + sizes[mid]!;
+    const e = offsets.length >= n + 1 ? offsets[mid + 1] : s + sizes[mid];
 
     if (value < s) hi = mid - 1;
     else if (value >= e) lo = mid + 1;
@@ -158,14 +158,14 @@ export const defaultHitTest: HitTest = (layout, p) => {
   const colStart = layout.colOffsets[col] ?? 0;
   const colEnd =
     layout.colOffsets.length >= layout.colCount + 1
-      ? layout.colOffsets[col + 1]!
-      : colStart + layout.colWidths[col]!;
+      ? layout.colOffsets[col + 1]
+      : colStart + layout.colWidths[col];
 
   const rowStart = layout.rowOffsets[row] ?? 0;
   const rowEnd =
     layout.rowOffsets.length >= layout.rowCount + 1
-      ? layout.rowOffsets[row + 1]!
-      : rowStart + layout.rowHeights[row]!;
+      ? layout.rowOffsets[row + 1]
+      : rowStart + layout.rowHeights[row];
 
   // Near either boundary => handle
   const nearColStart = col > 0 && Math.abs(contentX - colStart) <= slop;

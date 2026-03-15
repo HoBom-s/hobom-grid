@@ -4,9 +4,7 @@ const react = require("eslint-plugin-react");
 const reactHooks = require("eslint-plugin-react-hooks");
 
 module.exports = [
-  // -----------------------------
-  // Global ignores
-  // -----------------------------
+  // ----- Global ignores -----
   {
     ignores: [
       "**/node_modules/**",
@@ -14,48 +12,57 @@ module.exports = [
       "**/build/**",
       "**/.turbo/**",
       "**/coverage/**",
-      "**/reference/**", // typedoc output
+      "**/reference/**",
     ],
   },
 
-  // -----------------------------
-  // Base JS recommended
-  // -----------------------------
+  // ----- Base JS recommended -----
   js.configs.recommended,
 
-  // -----------------------------
-  // TS recommended (non type-aware)
-  // -----------------------------
-  ...tseslint.configs.recommended,
+  // ----- TS strictTypeChecked (type-aware) -----
+  ...tseslint.configs.strictTypeChecked,
 
-  // -----------------------------
-  // Common project rules (JS/TS)
-  // -----------------------------
-  {
-    rules: {
-      "no-console": "off",
-    },
-  },
-
-  // -----------------------------
-  // TS rule overrides
-  // -----------------------------
+  // ----- TS common: parserOptions + custom rules -----
   {
     files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: __dirname,
+      },
+    },
     rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
       "@typescript-eslint/explicit-function-return-type": "off",
     },
   },
 
-  // -----------------------------
-  // React + Hooks (apply to react package only)
-  // -----------------------------
+  // ----- Spec / config file relaxation -----
   {
-    files: ["packages/react/**/*.{ts,tsx,js,jsx}"],
+    files: ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}", "**/*.config.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-confusing-void-expression": "off",
+      "@typescript-eslint/unbound-method": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
+    },
+  },
+
+  // ----- React + Hooks (react package only) -----
+  {
+    files: ["packages/react/**/*.{ts,tsx}"],
     plugins: {
       react,
       "react-hooks": reactHooks,
@@ -66,8 +73,13 @@ module.exports = [
     rules: {
       ...(react.configs.recommended?.rules ?? {}),
       ...(reactHooks.configs.recommended?.rules ?? {}),
-
-      "react/react-in-jsx-scope": "off", // React 17+
+      "react/react-in-jsx-scope": "off",
     },
+  },
+
+  // ----- CJS files: disable TS parsing -----
+  {
+    files: ["**/*.cjs"],
+    ...tseslint.configs.disableTypeChecked,
   },
 ];
