@@ -1,6 +1,6 @@
 {
   "name": "@hobom-grid/react",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "React adapter for @hobom-grid/core — virtualized data grid component and hooks",
   "license": "MIT",
   "author": "HoBom (https://github.com/HoBom-s)",
