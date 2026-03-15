@@ -13,6 +13,8 @@ module.exports = [
       "**/.turbo/**",
       "**/coverage/**",
       "**/reference/**",
+      "**/tsup.config.ts",
+      "configs/tsup/**",
     ],
   },
 
